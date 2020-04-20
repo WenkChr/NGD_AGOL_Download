@@ -43,13 +43,11 @@ ngdal_cols = []
 ngdal_cols.extend(special_cols)
 ngdal_cols.append('geometry')
 ngdal_cols.extend(ngdal_col_map.keys())
-print(ngdal_cols)
 
 ngdstreet_cols = []
 ngdstreet_cols.extend(special_cols)
 ngdstreet_cols.extend(ngdstreet_extra_cols)
 ngdstreet_cols.extend(ngdstreet_col_map.keys())
-print(ngdstreet_cols)
 
 # read the redline data
 data_path = "../redline_2020-04-17.geojson"

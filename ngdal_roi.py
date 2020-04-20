@@ -1,4 +1,4 @@
-# Compare the redline NGD_AL data against the source data to detect changes
+# Compare the redline NGD_AL data against the source data to extract only records of interest for change detection
 
 import geopandas as gpd
 
