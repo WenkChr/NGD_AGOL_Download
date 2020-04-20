@@ -57,9 +57,9 @@ df = gpd.read_file(data_path)
 
 # separate the redline data into its component datasets in EC
 ngdal = df[ngdal_cols].rename(columns=ngdal_col_map)
-ngdal.to_file("../ngdal.geojson", driver='GeoJSON')
+ngdal.to_file("../redline_ngdal.geojson", driver='GeoJSON')
 
 ngdstreet = pd.DataFrame(df[ngdstreet_cols]).rename(columns=ngdstreet_col_map)
 
 # should the alias values be stacked to align with the name columns? EC has no alias values.
-ngdstreet.to_csv("../ngd_street.csv", index=False)
+ngdstreet.to_csv("../redline_ngd_street.csv", index=False)
