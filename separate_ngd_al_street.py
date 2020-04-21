@@ -54,9 +54,11 @@ data_path = "../redline_2020-04-17.geojson"
 df = gpd.read_file(data_path)
 
 # separate the redline data into its component datasets in EC
+print("Writing redline geojson for NGD_AL data.")
 ngdal = df[ngdal_cols].rename(columns=ngdal_col_map)
 ngdal.to_file("../redline_ngdal.geojson", driver='GeoJSON')
 
+print("Writing redline CSV file for NGD_STREET data.")
 ngdstreet = pd.DataFrame(df[ngdstreet_cols]).rename(columns=ngdstreet_col_map)
 
 # should the alias values be stacked to align with the name columns? EC has no alias values.
