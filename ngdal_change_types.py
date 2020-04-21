@@ -13,7 +13,6 @@ compare_cols = ['AFL_VAL', 'AFL_SFX', 'AFL_SRC', 'ATL_VAL', 'ATL_SFX', 'ATL_SRC'
 output_cols = ['SGMNT_TYP_CDE', 'SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE',
         'NGD_UID','CreationDate','Creator','EditDate','Editor','Comments',
         'GlobalID']
-# output_cols.extend(compare_cols)
 
 # load the data to be compared
 print("Loading datasets from disk.")
@@ -33,8 +32,6 @@ redline['length'] = redline.geometry.length.round(0)
 ngdal['length'] = ngdal.geometry.length.round(0)
 
 print("Determining attribute changes.")
-# changed = (redline[redline[usecols].eq(ngdal[usecols])][usecols]
-#         .merge(redline[keep_cols], how='left', left_index=True, right_index=True))
 change_mask = redline[compare_cols].ne(ngdal[compare_cols])
 changed = redline.where(change_mask)
 # only mask columns will have a value, so drop anything else that was there and merge it back.
@@ -48,21 +45,3 @@ changed_attr = changed[changed['length'].isna()]
 print("Writing changed data to file.")
 changed_attr.to_csv("../redline_ngdal_attr_changed.csv")
 changed_geom.to_file("../redline_ngdal_geom_changed.geojson", driver='GeoJSON', index=False)
-
-# merge the records together based on NGD_UID
-# print("Joining data to perform comparisons.")
-# There are potentially multiple redline changes for a single UID, so be sure to join onto redline.
-# merged = redline.merge(ngdal, how='left', on='NGD_UID', suffixes=('_redline', '_ngdal'))
-# print(merged.columns)
-
-# print(redline.columns)
-# print("Spatial compare: ", len(merged))
-
-# redline_mask = redline[compare_cols]
-# print(redline_mask.dtypes)
-# ngdal_mask = ngdal[compare_cols]
-# print(ngdal_mask.dtypes)
-# diff_mask = (redline_mask != ngdal_mask) & ~(redline_mask.isnull() & ngdal_mask.isnull())
-# redline[compare_cols][diff_mask].merge(redline[['SGMNT_TYP_CDE', 'SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE',
-#         'NGD_UID','CreationDate','Creator','EditDate','Editor','Comments',
-#         'GlobalID']], left_index=True, right_index=True).to_csv("../redline_ngdal_attr_changed2.csv", index=False)
