@@ -13,7 +13,7 @@ compare_cols = ['AFL_VAL', 'AFL_SFX', 'AFL_SRC', 'ATL_VAL', 'ATL_SFX', 'ATL_SRC'
 output_cols = ['SGMNT_TYP_CDE', 'SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE',
         'NGD_UID','CreationDate','Creator','EditDate','Editor','Comments',
         'GlobalID']
-output_cols.extend(compare_cols)
+# output_cols.extend(compare_cols)
 
 # load the data to be compared
 print("Loading datasets from disk.")
@@ -36,15 +36,14 @@ print("Determining attribute changes.")
 # changed = (redline[redline[usecols].eq(ngdal[usecols])][usecols]
 #         .merge(redline[keep_cols], how='left', left_index=True, right_index=True))
 change_mask = redline[compare_cols].ne(ngdal[compare_cols])
-changed = redline[output_cols][change_mask]
+changed = redline.where(change_mask)
+# only mask columns will have a value, so drop anything else that was there and merge it back.
+changed = changed[compare_cols]
+changed = changed.merge(redline[output_cols], left_index=True, right_index=True)
 
 # split the changed data based on if there is a geometry change
 changed_geom = redline[changed['length'].notna()]
 changed_attr = changed[changed['length'].isna()]
-
-
-# changed = redline.merge(ngdal, on=compare_cols, how='outer', suffixes=['', '_'], indicator=True)
-# changed = changed.loc[changed['_merge'] == 'left_only', output_cols]
 
 print("Writing changed data to file.")
 changed_attr.to_csv("../redline_ngdal_attr_changed.csv")
