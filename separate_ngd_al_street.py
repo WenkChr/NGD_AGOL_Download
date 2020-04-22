@@ -4,7 +4,7 @@ import geopandas as gpd
 import pandas as pd
 
 # fields used for tracking within AGOL
-special_cols = ['GlobalID','CreationDate','Creator','EditDate','Editor', 'Comments']
+special_cols = ['GlobalID','CreationDate','Creator','EditDate','Editor', 'Comments','STR_RH_DIFF_FLG']
 
 # columns that belong to NGD_AL, mapped to their standard names
 ngdal_col_map = {'WC2021NGD_AL_20200313_NGD_UID': 'NGD_UID',
@@ -62,4 +62,4 @@ print("Writing redline CSV file for NGD_STREET data.")
 ngdstreet = pd.DataFrame(df[ngdstreet_cols]).rename(columns=ngdstreet_col_map)
 
 # should the alias values be stacked to align with the name columns? EC has no alias values.
-ngdstreet.to_csv("../redline_ngd_street.csv", index=False)
+ngdstreet.to_csv("../redline_ngdstreet.csv", index=False)
