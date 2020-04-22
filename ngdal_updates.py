@@ -22,23 +22,37 @@ def get_field_value_for_ngduid(df, field, uid):
 
     subdf = df[df[UID_FIELD] == uid]
     # there is only one record left, so grab the first one
-    return subdf.iloc[0][field]
+    value = subdf.iloc[0][field]
+    # convert NaN values to None
+    if pd.isna(value):
+        value = None
+
+    return value
 
 def normalize_value(value):
     """Ensure a value is either a string or an integer."""
 
-    if type(value) is str:
-        if len(value):
-            return f"'{value}'"
-    elif type(value) is float and pd.notna(value):
-        int(value)
-    else:
+    # nothing to do when the value is None or NaN
+    if value is None or pd.isna(value):
         return None
+
+    # if it is a string, enclose it in quotes
+    if type(value) is str:
+        return f"'{value}'"
+
+    # probably a number, so force an integer
+    try:
+        return int(value)
+    except:
+        pass
+
+    # nothing else worked, just return None
+    return None
 
 if __name__ == '__main__':
     data_dir = Path('..')
     # paths to data files
-    redline_path = data_dir.joinpath('redline_ngdal.geojson')
+    redline_path = data_dir.joinpath('redline_attr_changes.geojson')
     ngdal_path = data_dir.joinpath('ngdal_affected.geojson')
     # paths to outputs
     ngdal_sql_path = data_dir.joinpath('redline_ngdal_updates.sql')
