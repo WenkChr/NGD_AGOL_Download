@@ -15,9 +15,9 @@ def auto_download_data(data_url, outGDB, outname, att_or_geo, fieldPrefix= 'WC20
         data_url = os.path.join(data_url, '0')
     
     if att_or_geo:
-        arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, whereClause= fieldPrefix + "NGD_UID IS NOT NULL")
+        arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= fieldPrefix + "NGD_UID IS NOT NULL")
     if not att_or_geo:
-        arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, whereClause= fieldPrefix + "NGD_UID IS NULL")
+        arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= fieldPrefix + "NGD_UID IS NULL")
     return os.path.join(outGDB, outname)
 
 def unique_values(fc, field):
@@ -29,6 +29,9 @@ def filter_data_remove_duplicates(Redline_data, outGDB, outName, field_prefix= '
     # Start by finding the most recent date for each NGD_UID and keeping only that date
     KeepRows = []
     for uid in unique_values(Redline_data, field_prefix + 'NGD_UID'):
+        if uid == None:
+            print('NGD_UID is None no filtering required')
+            break
         fieldnames = [field_prefix + 'NGD_UID', 'EditDate']
         fl = arcpy.MakeFeatureLayer_management(Redline_data, 'fl', where_clause= fieldnames[0] + '= ' + str(uid))
         max_date = max(unique_values(fl, fieldnames[1]))
@@ -41,7 +44,7 @@ def filter_data_remove_duplicates(Redline_data, outGDB, outName, field_prefix= '
         arcpy.SelectLayerByAttribute_management(fl, 'ADD_TO_SELECTION', "OBJECTID = {}".format(oid))
     arcpy.FeatureClassToFeatureClass_conversion(fl, outGDB, outName)
     return os.path.join(outGDB, outName)
-
+       
 # inputs
 
 url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline/FeatureServer'
@@ -51,7 +54,7 @@ o_name = 'RedLine'
 
 #Calls
 
-results = auto_download_data(url, file_name, o_gdb, o_name)
+results = auto_download_data(url, o_gdb, o_name, True)
 filtered = filter_data_remove_duplicates(results, o_gdb, 'Redline_w_NGD_UID')
 
 print('DONE!')
