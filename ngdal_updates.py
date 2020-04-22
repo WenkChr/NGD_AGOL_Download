@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 from pathlib import Path
+import os
 
 # Compare the redline data against NGD_AL and generate SQL statements to be run 
 # against NGD so that it reflects those changes.
@@ -13,6 +14,8 @@ TBL_NAME = "NGD.NGD_AL"
 UID_FIELD = "NGD_UID"
 DATE_FIELD = "EditDate"
 DATE_FORMAT_STRING = "%Y-%m-%d"
+# ending of an SQL statement
+END_SQL_STMT = ";" + os.linesep
 
 def get_field_value_for_ngduid(df, field, uid):
     """Get a specific value from a dataframe based on the row ID."""
@@ -71,7 +74,7 @@ if __name__ == '__main__':
             # don't bother processing if there is no value in the redline layer
             if red_val and (ngd_val != red_val):
                 sql = f"UPDATE {TBL_NAME} SET {fieldname}={red_val}, {target_date_field}='{date_val}' WHERE {UID_FIELD}={uid}"
-                stmts.append(sql)
+                stmts.append(sql + END_SQL_STMT)
 
     # process address values on the NGD_AL
     print(f"Processing address fields.")
@@ -92,6 +95,9 @@ if __name__ == '__main__':
             # don't bother processing if there is no value in the redline layer
             if red_val and (ngd_val != red_val):
                 sql = f"UPDATE {TBL_NAME} SET {fieldname}={red_val}, {target_date_field}='{date_val}' WHERE {UID_FIELD}={uid}"
-                stmts.append(sql)
-# what about date format?
-    print(stmts)
+                stmts.append(sql + END_SQL_STMT)
+
+    # write the output to the SQL file
+    print("Writing SQL statements to file", ngdal_sql_path)
+    with ngdal_sql_path.open(mode='w') as sqlfile:
+        sqlfile.writelines(stmts)
