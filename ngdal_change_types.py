@@ -12,7 +12,7 @@ import geopandas as gpd
 GEOM_ROUNDING_FACTOR = 0.1
 
 # paths to input files
-redline_path = '../redline_ngdal.geojson'
+redline_path = '../redline_2020-04-21.geojson'
 ngdal_path = '../ngdal_affected.geojson'
 
 # paths to output files
@@ -29,8 +29,7 @@ output_cols = ['SGMNT_TYP_CDE', 'SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE',
 
 # load the data to be compared
 print("Loading datasets from disk.")
-redline = (gpd.read_file(redline_path)
-        .to_crs("EPSG:3347"))
+redline = gpd.read_file(redline_path)
 ngdal = gpd.read_file(ngdal_path)
 
 # Step 1 - break away any records without an NGD_UID
@@ -39,7 +38,6 @@ geom_change = redline.loc[redline["NGD_UID"].isna()]
 
 attr_change = redline.loc[redline["NGD_UID"].notna()]
 attr_change["NGD_UID"] = attr_change["NGD_UID"].astype(int)
-attr_change = attr_change.drop_duplicates(subset="NGD_UID", keep="last")
 
 print("Geometry changes: ", len(geom_change))
 print("Attibute changes: ", len(attr_change))

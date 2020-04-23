@@ -3,7 +3,7 @@
 import geopandas as gpd
 
 # paths
-redline_path = '../redline_ngdal.geojson'
+redline_path = '../redline_2020-04-21.geojson'
 
 ngd_db_path = '../ngd_national.gdb'
 ngdal_layer = 'WC2021NGD_AL_20200313'
