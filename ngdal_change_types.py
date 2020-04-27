@@ -17,15 +17,7 @@ ngdal_path = '../ngdal_affected.geojson'
 
 # paths to output files
 redline_attr_changes = '../redline_attr_changes.geojson'
-redline_geom_changes = '../redline_geom_chnages.geojson'
-
-# the columns to be used for equality comparisons
-compare_cols = ['AFL_VAL', 'AFL_SFX', 'AFL_SRC', 'ATL_VAL', 'ATL_SFX', 'ATL_SRC',
-       'AFR_VAL', 'AFR_SFX', 'AFR_SRC', 'ATR_VAL', 'ATR_SFX', 'ATR_SRC',
-       'ADDR_TYP_L', 'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R','length']
-output_cols = ['SGMNT_TYP_CDE', 'SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE',
-        'NGD_UID','CreationDate','Creator','EditDate','Editor','Comments',
-        'GlobalID']
+redline_geom_changes = '../redline_geom_changes.geojson'
 
 # load the data to be compared
 print("Loading datasets from disk.")
