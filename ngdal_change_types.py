@@ -4,6 +4,7 @@
 # 1. No NGD_UID (wholly new geometry)
 # 2. The geometry has changed by more than 10m
 # 3. Right side has different name flag
+# 4. CSD_UID L/R values don't match, so street UIDs are handled differently (boundary arcs)
 # All other records will be put into a single output to look for attribute changes
 
 import geopandas as gpd
@@ -56,6 +57,18 @@ print("Attibute changes: ", len(attr_change))
 print("Looking for right side street name differences")
 diff_rh = attr_change[attr_change['STR_RH_DIFF_FLG'] == 1]
 geom_change_uids = diff_rh['NGD_UID'].unique().tolist()
+# add the geometry changes to the set with no NGD_UID
+geom_change = geom_change.append(attr_change[attr_change['NGD_UID'].isin(geom_change_uids)])
+# remove any newly identified geometry changes from the attr_change dataframe
+attr_change = attr_change[~attr_change['NGD_UID'].isin(geom_change_uids)]
+
+print("Geometry changes: ", len(geom_change))
+print("Attibute changes: ", len(attr_change))
+
+# Step 4 - look for any mismatched CSD_UID L/R values
+print("Looking for CSD boundary arcs")
+csd_mask = attr_change[attr_change['CSD_UID_L'] == attr_change['CSD_UID_R']]
+geom_change_uids = csd_mask['NGD_UID'].unique().tolist()
 # add the geometry changes to the set with no NGD_UID
 geom_change = geom_change.append(attr_change[attr_change['NGD_UID'].isin(geom_change_uids)])
 # remove any newly identified geometry changes from the attr_change dataframe
