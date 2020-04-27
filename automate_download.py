@@ -1,6 +1,7 @@
 import os, sys, arcpy
 from arcgis.gis import GIS
 from arcgis.features import FeatureLayer
+
 arcpy.env.overwriteOutput = True
 
 def auto_download_data(data_url, outGDB, outname, att_or_geo, from_date, to_date, fieldPrefix= 'WC2021NGD_AL_20200313_'):
@@ -70,7 +71,7 @@ def rename_the_fields(redline_data):
                     'WC2021NGD_AL_20200313_NGD_STR_U' : 'NGD_STR_UID_L',
                     'WC2021NGD_AL_20200313_NGD_STR_1' : 'NGD_STR_UID_R',
                     'WC2021NGD_AL_20200313_PLACE_ID1' : 'PLACE_ID_R'}
-    print('Renaming  redline fields')
+    print('Renaming redline fields')
     for f in arcpy.ListFields(redline_data):
         fieldName = f.name
         if fieldName in ngdal_col_map:
@@ -87,7 +88,7 @@ def filter_data_remove_duplicates(Redline_data, outGDB, outName):
     for uid in unique_values(Redline_data, 'NGD_UID'):
         if uid == None:
             print('NGD_UID is None no filtering required')
-            break
+            return os.path.join(outGDB, outName)
         fieldnames = ['NGD_UID', 'EditDate']
         fl = arcpy.MakeFeatureLayer_management(Redline_data, 'fl', where_clause= fieldnames[0] + '= ' + str(uid))
         max_date = max(unique_values(fl, fieldnames[1]))
@@ -97,19 +98,24 @@ def filter_data_remove_duplicates(Redline_data, outGDB, outName):
                     KeepRows.append(row[0])
     fl = arcpy.MakeFeatureLayer_management(Redline_data, 'fl2')    
     arcpy.SelectLayerByAttribute_management(fl, where_clause= "OBJECTID IN " + str(tuple(KeepRows)))
-    arcpy.FeatureClassToFeatureClass_conversion(fl, outGDB, outName)
+    arcpy.FeatureClassToFeatureClass_conversion(fl, outGDB, outName + '_uniques')
     return os.path.join(outGDB, outName)
 
-def address_field_check(redline_data, out_gdb, out_base_name):
+def address_field_check(redline_data, out_gdb, out_base_name, w_NGD_UID= True):
     print('Running address field changes check')
     # check redline fields against the NGD_AL fields. If fields change from valid to invalid flag those rows
-    fields_to_qc = ['NGD_UID','AFL_VAL','AFL_SRC', 'AFR_VAL', 'AFR_SRC', 'ATL_VAL', 'ATL_SRC', 'ATR_VAL', 'ATR_SRC', 'ADDR_TYP_L',
+    uid_field = 'NGD_UID'
+    if w_NGD_UID == False:
+        uid_field = 'OBJECTID'
+    
+    fields_to_qc = [uid_field, 'AFL_VAL','AFL_SRC', 'AFR_VAL', 'AFR_SRC', 'ATL_VAL', 'ATL_SRC', 'ATR_VAL', 'ATR_SRC', 'ADDR_TYP_L',
                     'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R']
     
     fail_rows = []
     good_rows = []
     with arcpy.da.SearchCursor(redline_data, field_names= fields_to_qc ) as cursor:
         for row in cursor:
+            #If the row breaks the rule then add to the fail_rows list for correction
             #if AFL_VAL IS NOT NULL THEN ATL_VAL, ADDR_TYP_L, ADDR_PRTY_L NOT NULL
             if row[1] != None and row[5] == None or  row[9] == None or row[11] == None:
                 fail_rows.append(row[0])
@@ -128,12 +134,17 @@ def address_field_check(redline_data, out_gdb, out_base_name):
                 continue
             good_rows.append(row[0])
     print('exporting sorted rows')
-    arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_goodAddr',  
-                                                where_clause= 'NGD_UID IN' + str(tuple(good_rows)))
-    arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_badAddr',  
-                                                where_clause= 'NGD_UID IN' + str(tuple(fail_rows)))
+    outlist = [None, None]
     
-    return [os.path.join(out_gdb, out_base_name + '_goodAddr'), os.path.join(out_gdb, out_base_name + '_badAddr')]
+    if len(good_rows) > 0:
+        arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_goodAddr',  
+                                                    where_clause= uid_field + ' IN ' + str(tuple(good_rows)))
+        outlist[0] = os.path.join(out_gdb, out_base_name + '_goodAddr')
+    if len(fail_rows)> 0:
+        arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_badAddr',  
+                                                    where_clause= uid_field + ' IN ' + str(tuple(fail_rows)))
+        outlist[1] = os.path.join(out_gdb, out_base_name + '_badAddr')
+    return outlist
 
 
 def fix_address_field_errors(bad_redline_rows, o_gdb, o_name):
@@ -160,28 +171,41 @@ def ADDR_PRTY_FIXER(AF_VAL, AT_VAL):
         return 'M'
         '''
         arcpy.SelectLayerByAttribute_management(fl, 'NEW_SELECTION', where_clause= 'ADDR_PRTY_' + d + ' IS NULL')
-        arcpy.CalculateField_management(fl, 'ADDR_PRTY_' + d, 'ADDR_PRTY_FIXER(!AF{}_VAL!, !AT{}_VAL!)'.format(d, d) , 
-                                        'PYTHON3', code_block= code)
+        arcpy.CalculateField_management(fl, 'ADDR_PRTY_' + d, 'ADDR_PRTY_FIXER(!AF' + d + '_VAL!, !AT' + d + '_VAL!)', 
+                                        'PYTHON3', code_block= code)    
     #Export changes and overwrite prior redline file
     arcpy.SelectLayerByAttribute_management(fl, 'CLEAR_SELECTION')
-    arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name)
-    return os.path.join(o_gdb, o_name) 
-
+    arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name + '_bad_addr')
+    return os.path.join(o_gdb, o_name + '_bad_addr') 
+#------------------------------------------------------------------------------------------------------------
 # inputs
 
 url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline/FeatureServer'
 file_name = 'NGD_STREET Redline'
 o_gdb = r'H:\automate_AGOL_download\AGOL_tests.gdb'
 o_name = 'RedLine_test'
+NGD_UIDs = False
 
+#--------------------------------------------------------------------------------------------------------------
 #Calls
 print('Running calls')
-results = auto_download_data(url, o_gdb, o_name, True, '2019-04-10', '2021-04-15')
-results = os.path.join(o_gdb, o_name)
+results = auto_download_data(url, o_gdb, o_name, NGD_UIDs, '2019-04-10', '2021-04-15')
 rename_the_fields(results)
 print('Filtering')
-filtered = filter_data_remove_duplicates(results, o_gdb, 'Redline_w_NGD_UID')
+filtered = filter_data_remove_duplicates(results, o_gdb, o_name)
 print('Running address field QC checks')
-checked = address_field_check(filtered, o_gdb, o_name)
-fix_address_field_errors(checked[1], o_gdb, o_name)
+checked = address_field_check(filtered, o_gdb, o_name, NGD_UIDs)
+
+if checked[1] == None:
+    arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
+if checked[1] != None:
+    fix_address_field_errors(checked[1], o_gdb, o_name)
+    arcpy.Delete_management(os.path.join(o_gdb, o_name))
+    if checked[0] != None:
+        print(checked)
+        arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
+    else: 
+        arcpy.FeatureClassToFeatureClass_conversion(checked[1], o_gdb, o_name)
+        arcpy.Delete_management(checked[1])
+
 print('DONE!')
