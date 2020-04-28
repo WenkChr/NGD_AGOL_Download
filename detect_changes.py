@@ -102,8 +102,8 @@ attr_change[ngd_uid_field] = attr_change[ngd_uid_field].astype(int)
 attr_change['CSD_UID_L'] = pd.to_numeric(attr_change['CSD_UID_L'])
 attr_change['CSD_UID_R'] = pd.to_numeric(attr_change['CSD_UID_R'])
 
-print("Geometry changes: ", len(geom_change))
-print("Attibute changes: ", len(attr_change))
+print("Geometry changes:", len(geom_change))
+print("Attibute changes:", len(attr_change))
 
 # Step 2 - look for any geometries that have a >10m change
 print("Looking for changed geometries...")
@@ -123,8 +123,8 @@ geom_change = geom_change.append(attr_change[attr_change[ngd_uid_field].isin(geo
 # remove any newly identified geometry changes from the attr_change dataframe
 attr_change = attr_change[~attr_change[ngd_uid_field].isin(geom_change_uids)]
 
-print("Geometry changes: ", len(geom_change))
-print("Attibute changes: ", len(attr_change))
+print("Geometry changes:", len(geom_change))
+print("Attibute changes:", len(attr_change))
 
 # Step 3 - look for any records identified as having a different street name on either side of the arc
 print("Looking for right side street name difference flag...")
@@ -135,8 +135,8 @@ geom_change = geom_change.append(attr_change[attr_change[ngd_uid_field].isin(geo
 # remove any newly identified geometry changes from the attr_change dataframe
 attr_change = attr_change[~attr_change[ngd_uid_field].isin(geom_change_uids)]
 
-print("Geometry changes: ", len(geom_change))
-print("Attibute changes: ", len(attr_change))
+print("Geometry changes:", len(geom_change))
+print("Attibute changes:", len(attr_change))
 
 # Step 4 - look for any mismatched CSD_UID L/R values and send them to new geometry process
 
@@ -148,8 +148,8 @@ geom_change = geom_change.append(attr_change[attr_change[ngd_uid_field].isin(geo
 # remove any newly identified geometry changes from the attr_change dataframe
 attr_change = attr_change[~attr_change[ngd_uid_field].isin(geom_change_uids)]
 
-print("Geometry changes: ", len(geom_change))
-print("Attibute changes: ", len(attr_change))
+print("Geometry changes:", len(geom_change))
+print("Attibute changes:", len(attr_change))
 
 # Step 5 - look for changes in street names
 
@@ -250,15 +250,15 @@ for searcher in street_name_searchers:
             if not len(existing_geom_changes):
                 geom_change = pd.concat([geom_change, group.replace(-1, np.nan)])
     
-    print("Changes: ", change_type)
+    print("Changes:", change_type)
 
 # remove any geometries that were added onto the new geometry workflow
 attr_change = attr_change[~attr_change[ngd_uid_field].isin(geom_change[ngd_uid_field].unique().tolist())]
 # reset the filler values
 attr_change = attr_change.replace(-1, np.nan)
 
-print("Geometry changes: ", len(geom_change))
-print("Attibute changes: ", len(attr_change))
+print("Geometry changes:", len(geom_change))
+print("Attibute changes:", len(attr_change))
 
 # Step 6 - look for changes to the address range attributes
 
@@ -288,7 +288,7 @@ for index, row in attr_change.iterrows():
         else:
             change_type['same'] += 1
 
-print("Changes: ", change_type)
+print("Changes:", change_type)
 
 # process address values on the NGD_AL, which have a date field that matches their name
 print(f"Processing address fields.")
@@ -318,7 +318,7 @@ for index, row in attr_change.iterrows():
         else:
             change_type['same'] += 1
 
-print("Changes: ", change_type)
+print("Changes:", change_type)
 
 # write final results to output
 print("Writing outputs")
@@ -331,5 +331,5 @@ with attr_changes_path.open(mode='w') as sqlfile:
     sqlfile.writelines(stmts)
 
 # write GeoJSON for new geometries
-print("Geometry changes: ", len(geom_change))
+print("Geometry changes:", len(geom_change))
 geom_change.to_file(geom_changes_path, driver='GeoJSON')
