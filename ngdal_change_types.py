@@ -8,13 +8,18 @@
 # All other records will be put into a single output to look for attribute changes
 
 import geopandas as gpd
+from dotenv import load_dotenv
+import os
+
+# load environment to get settings
+load_dotenv()
 
 # how much leeway is there in matching geometries (0.1 == 10m)
 GEOM_ROUNDING_FACTOR = 0.1
 
 # paths to input files
-redline_path = '../redline_2020-04-21.geojson'
-ngdal_path = '../ngdal_affected.geojson'
+redline_path = os.getenv('NGD_REDLINE_DATA')
+ngdal_path = os.getenv('NGD_NGDAL_AFFECTED_FILE')
 
 # paths to output files
 redline_attr_changes = '../redline_attr_changes.geojson'
@@ -79,5 +84,5 @@ print("Attibute changes: ", len(attr_change))
 
 # Write the data to disk
 print("Writing change results to disk.")
-geom_change.to_file("../redline_geom_changes.geojson", driver='GeoJSON')
-attr_change.to_file("../redline_attr_changes.geojson", driver='GeoJSON')
+geom_change.to_file(redline_geom_changes, driver='GeoJSON')
+attr_change.to_file(redline_attr_changes, driver='GeoJSON')
