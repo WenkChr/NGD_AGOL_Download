@@ -28,11 +28,11 @@ def sql_normalize_value(value):
     if value is None or pd.isna(value):
         return None
 
-    # if it is a string, enclose it in quotes
+    # if it is a string just send it as is
     if type(value) is str:
-        return f"'{value}'"
+        return value
 
-    # probably a number, so force an integer
+    # probably a number, so force an integer (there are no floats in what we care about)
     try:
         return int(value)
     except:
@@ -228,7 +228,7 @@ for searcher in street_name_searchers:
             change_type['update'] += 1
             date_val = group['EditDate'].tolist()[0].strftime(sql_date_format)
             uid = group[ngd_uid_field].tolist()[0]
-            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}='{date_val}' WHERE {ngd_uid_field}={uid}"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
             stmts.append(sql + END_SQL_STMT)
             # name changes also have a source attribute that needs to be updated
             if searcher['grouper'][1] == 'STR_NME':
@@ -278,7 +278,11 @@ for index, row in attr_change.iterrows():
 
         # don't bother processing if there is no value in the redline layer
         if red_val and (ngd_val != red_val):
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}='{date_val}' WHERE {ngd_uid_field}={uid}"
+            # need to put quotes on string values for the SQL query
+            if type(red_val) is str:
+                red_val = f"'{red_val}'"
+
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
@@ -304,7 +308,11 @@ for index, row in attr_change.iterrows():
 
         # don't bother processing if there is no value in the redline layer
         if red_val and (ngd_val != red_val):
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}='{date_val}' WHERE {ngd_uid_field}={uid}"
+            # need to put quotes on string values for the SQL query
+            if type(red_val) is str:
+                red_val = f"'{red_val}'"
+
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
