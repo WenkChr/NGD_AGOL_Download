@@ -180,7 +180,7 @@ def ADDR_PRTY_FIXER(AF_VAL, AT_VAL):
 
 def delete_non_essentials(gdb, keepFile_name):
     #Deletes contents of a GDB except for the specified keep file
-    arcpy.env = gdb
+    arcpy.env.workspace = gdb
     print('Deleting intermediate files')    
     fcs = arcpy.ListFeatureClasses()
     if len(fcs)> 0 and type(fcs) != None:
