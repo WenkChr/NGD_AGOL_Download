@@ -133,7 +133,7 @@ def address_field_check(redline_data, out_gdb, out_base_name, w_NGD_UID= True):
                 fail_rows.append(row[0])
                 continue
             good_rows.append(row[0])
-    print('exporting sorted rows')
+    print('Exporting sorted rows')
     outlist = [None, None]
     
     if len(good_rows) > 0:
@@ -177,35 +177,60 @@ def ADDR_PRTY_FIXER(AF_VAL, AT_VAL):
     arcpy.SelectLayerByAttribute_management(fl, 'CLEAR_SELECTION')
     arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name + '_bad_addr')
     return os.path.join(o_gdb, o_name + '_bad_addr') 
+
+def delete_non_essentials(gdb, keepFile_name):
+    #Deletes contents of a GDB except for the specified keep file
+    arcpy.env = gdb
+    print('Deleting intermediate files')    
+    fcs = arcpy.ListFeatureClasses()
+    if len(fcs)> 0 and type(fcs) != None:
+        for f in arcpy.ListFeatureClasses(gdb):
+            if arcpy.Exists(f) and f != keepFile_name:
+                arcpy.Delete_management(f)
+
 #------------------------------------------------------------------------------------------------------------
 # inputs
 
-url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline/FeatureServer'
-file_name = 'NGD_STREET Redline'
-o_gdb = r'H:\automate_AGOL_download\AGOL_tests.gdb'
-o_name = 'RedLine_test'
-NGD_UIDs = False
+directory = os.getcwd() # Will return the directory that this file is currently in.
+url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline/FeatureServer' # URL for AGOL NGD_Redline data
+gdb_name = 'NGD_Redline.gdb'
+o_gdb = os.path.join(directory, gdb_name)
+o_name = 'NGD_STREET_Redline' # Name for final output file
+
+#Create fgdb for the downloaded data and intermediate files 
+if not arcpy.Exists(o_gdb):
+    arcpy.CreateFileGDB_management(directory, gdb_name)
+
+print('Input whether you want allrecords with NGD_UIDs (True) or all records without (False):')
+NGD_UIDs = input()
+
+print('Indicate the date you want records extraction to start at (format: YYYY-MM-DD):')
+from_date = input()
+print('Indicate the date you want records extraction to end on (format: YYYY-MM-DD):')
+to_date = input()
 
 #--------------------------------------------------------------------------------------------------------------
 #Calls
-print('Running calls')
-results = auto_download_data(url, o_gdb, o_name, NGD_UIDs, '2019-04-10', '2021-04-15')
+print('Running script')
+results = auto_download_data(url, o_gdb, o_name, NGD_UIDs, from_date, to_date)
 rename_the_fields(results)
-print('Filtering')
+print('Filtering to remove duplicate records (only when running on records that contain NGD_UIDs)')
 filtered = filter_data_remove_duplicates(results, o_gdb, o_name)
-print('Running address field QC checks')
+print('Running address fields QC checks')
 checked = address_field_check(filtered, o_gdb, o_name, NGD_UIDs)
 
+print('Merging all records and exporting to final feature class')
 if checked[1] == None:
     arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
+    delete_non_essentials(o_gdb, o_name)
 if checked[1] != None:
     fix_address_field_errors(checked[1], o_gdb, o_name)
     arcpy.Delete_management(os.path.join(o_gdb, o_name))
     if checked[0] != None:
-        print(checked)
         arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
+        delete_non_essentials(o_gdb, o_name)
     else: 
         arcpy.FeatureClassToFeatureClass_conversion(checked[1], o_gdb, o_name)
-        arcpy.Delete_management(checked[1])
+        delete_non_essentials(o_gdb, o_name)
 
 print('DONE!')
