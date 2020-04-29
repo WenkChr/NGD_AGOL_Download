@@ -28,7 +28,6 @@ ngdal_col_map = {'WC2021NGD_AL_20200313_NGD_UID': 'NGD_UID',
     'WC2021NGD_AL_20200313_ADDR_TYP1': 'ADDR_TYP_R',
     'WC2021NGD_AL_20200313_ADDR_PRTY': 'ADDR_PRTY_L',
     'WC2021NGD_AL_20200313_ADDR_PR_1': 'ADDR_PRTY_R'}
-    
 
 # columns that belong to NGD_STREET, mapped to their standard names
 ngdstreet_col_map = {'WC2021NGD_STREET_202003_STR_N_1': 'STR_NME',
