@@ -1,3 +1,4 @@
+
 # Detect changes between AGOL and NGD datasets
 
 A set of scripts used to detect differences between the AGOL environment and production NGD data.
@@ -13,7 +14,18 @@ Detecting differences consists of running multiple scripts that do different thi
 
 ### Step 1 - Download the redline data
 
-Steps to do this...
+Run the automate_download.py script. You will be prompted to input some information:
+- Indicate whether you want all records with NDS_UIDs or all records without NGD_UIDs. This input should be either True or False
+Indicating True will mean that the downloader will download all records with NGD_UIDs from AGOL and indicating False will download 
+all records without NGD_UIDs from AGOL.
+
+- Indicate the date to begin extracting records from in the format YYYY-MM-DD all inputs should be numeric. For example, 
+April 11th, 2020 would be 2020-04-11.
+
+- Indicate the date to end extraction on (inclusive). Date format should be the same as the previous input (YYYY_MM_DD)
+
+The file geodatabase will be created in the directory where the automate_download.py file is located. The primary file to be 
+concerned with is the NGD_STREET_Redline all othe files are intermediate and 
 
 ### Step 2 - Detect changes
 
