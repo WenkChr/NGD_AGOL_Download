@@ -26,7 +26,7 @@ def auto_download_data(data_url, outGDB, outname, att_or_geo, from_date, to_date
         arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= fieldPrefix + "NGD_UID IS NULL")
     return os.path.join(outGDB, outname)
 
-def rename_the_fields(redline_data):
+def rename_the_fields(NGD_data):
     ngdal_col_map = {'WC2021NGD_AL_20200313_NGD_UID': 'NGD_UID',
                     'WC2021NGD_AL_20200313_SGMNT_TYP': 'SGMNT_TYP_CDE',
                     'WC2021NGD_AL_20200313_SGMNT_SRC': 'SGMNT_SRC',
@@ -63,19 +63,49 @@ def rename_the_fields(redline_data):
                     'WC2021NGD_STREET_202003_STR_N_1' : 'STR_NME',
                     'WC2021NGD_STREET_202003_STR_TYP' : 'STR_TYP',
                     'WC2021NGD_STREET_202003_STR_DIR' : 'STR_DIR',
-                    'WC2021NGD_STREET_202003_NAME_SR' : 'NAME_SR',
+                    'WC2021NGD_STREET_202003_NAME_SR' : 'NAME_SRC',
                     'WC2021NGD_AL_20200313_BB_UID_L' : 'BB_UID_L',
                     'WC2021NGD_AL_20200313_BB_UID_R' : 'BB_UID_R',
                     'WC2021NGD_AL_20200313_BF_UID_L' : 'BF_UID_L',
                     'WC2021NGD_AL_20200313_BF_UID_R' : 'BF_UID_R',
                     'WC2021NGD_AL_20200313_NGD_STR_U' : 'NGD_STR_UID_L',
                     'WC2021NGD_AL_20200313_NGD_STR_1' : 'NGD_STR_UID_R',
-                    'WC2021NGD_AL_20200313_PLACE_ID1' : 'PLACE_ID_R'}
-    print('Renaming redline fields')
-    for f in arcpy.ListFields(redline_data):
+                    'WC2021NGD_AL_20200313_PLACE_ID1' : 'PLACE_ID_R',
+                    'WC2021NGD_AL_20200313_ALIAS1_ST' : 'ALIAS1_STR_UID_L',
+                    'WC2021NGD_AL_20200313_ALIAS1__1' : 'ALIAS1_STR_UID_R',
+                    'WC2021NGD_AL_20200313_ALIAS2_ST' : 'ALIAS2_STR_UID_L',
+                    'WC2021NGD_AL_20200313_ALIAS2__1' : 'ALIAS2_STR_UID_R',
+                    'WC2021NGD_AL_20200313_SRC_SGMNT' : 'SRC_SGMNT_ID', 
+                    'WC2021NGD_AL_20200313_SGMNT_DTE' : 'SGMNT_DTE',
+                    'WC2021NGD_AL_20200313_ATTRBT_DT' : 'ATTRBT_DTE', 
+                    'WC2021NGD_AL_20200313_GEOM_ACC_' : 'GEOM_ACC_CDE', 
+                    'WC2021NGD_AL_20200313_AFL_DTE' : 'AFL_DTE', 
+                    'WC2021NGD_AL_20200313_ATL_DTE' : 'ATL_DTE', 
+                    'WC2021NGD_AL_20200313_AFR_DTE' : 'AFR_DTE',
+                    'WC2021NGD_AL_20200313_ATR_DTE' : 'ATR_DTE',
+                    'WC2021NGD_AL_20200313_EC_STR_ID' : 'EC_STR_ID_L', 
+                    'WC2021NGD_AL_20200313_EC_STR__1' : 'EC_STR_ID_R',
+                    'WC2021NGD_AL_20200313_EC_STR__2' : 'EC_STR_ID_DTE_L',
+                    'WC2021NGD_AL_20200313_EC_STR__3' : 'EC_STR_ID_DTE_R',
+                    'WC2021NGD_AL_20200313_LAYER_SRC' : 'LAYER_SRC_CDE',
+                    'WC2021NGD_AL_20200313_LAYER_S_1' : 'LAYER_SRC_ID',
+                    'WC2021NGD_AL_20200313_REVIEW_FL' : 'REVIEW_FLG',
+                    'WC2021NGD_AL_20200313_MUST_HLD_' : 'MUST_HLD_TYP',
+                    'WC2021NGD_AL_20200313_TRAFFIC_D' : 'TRAFFIC_DIR_CDE',
+                    'WC2021NGD_AL_20200313_UPDT_SGMN' : 'UPDT_SGMNT_FLG',
+                    'WC2021NGD_AL_20200313_AOI_JOB_U' : 'AOI_JOB_UID',
+                    'WC2021NGD_STREET_202003_NGD_STR' : 'NGD_STR_UID',
+                    'WC2021NGD_STREET_202003_CSD_UID' : 'CSD_UID',
+                    'WC2021NGD_STREET_202003_STR_NME' : 'STR_NME_PRFX',
+                    'WC2021NGD_STREET_202003_STR_PAR' : 'STR_PARSD_NME', 
+                    'WC2021NGD_STREET_202003_STR_LAB' : 'STR_LABEL_NME', 
+                    'WC2021NGD_STREET_202003_STR_STA' : 'STR_STAT_CDE',
+                    'WC2021NGD_STREET_202003_UPDT_DT' : 'UPDT_DTE'}
+    print('Renaming NGD fields')
+    for f in arcpy.ListFields(NGD_data):
         fieldName = f.name
         if fieldName in ngdal_col_map:
-            arcpy.AlterField_management(redline_data, fieldName, ngdal_col_map[fieldName])
+            arcpy.AlterField_management(NGD_data, fieldName, ngdal_col_map[fieldName])
 
 def unique_values(fc, field):
     # Returns a list off unique values for a given field in the unput dataset
@@ -219,18 +249,30 @@ filtered = filter_data_remove_duplicates(results, o_gdb, o_name)
 print('Running address fields QC checks')
 checked = address_field_check(filtered, o_gdb, o_name, NGD_UIDs)
 
+if NGD_UIDs == True:
+    print('Getting only NGD_UIDs in redline data')
+    uids = unique_values(results, 'NGD_UID')
+    arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
+                                                os.path.join(directory, o_gdb), 
+                                                'WC2021NGD_AL_20200313',
+                                                'NGD_UID IN ' + str(tuple(uids)))
 print('Merging all records and exporting to final feature class')
+outFC_nme = os.path.join(o_gdb, o_name)
+out_GeoJSON_nme = os.path.join(directory, o_name + '.geojson')
 if checked[1] == None:
     arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
+    arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
     delete_non_essentials(o_gdb, o_name)
 if checked[1] != None:
     fix_address_field_errors(checked[1], o_gdb, o_name)
     arcpy.Delete_management(os.path.join(o_gdb, o_name))
     if checked[0] != None:
         arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
+        arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
         delete_non_essentials(o_gdb, o_name)
     else: 
         arcpy.FeatureClassToFeatureClass_conversion(checked[1], o_gdb, o_name)
+        arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
         delete_non_essentials(o_gdb, o_name)
 
 print('DONE!')
