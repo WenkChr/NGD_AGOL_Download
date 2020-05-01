@@ -1,11 +1,12 @@
 from collections import Counter
 from dotenv import load_dotenv
-import geopandas as gpd
+from arcgis import GIS
+from arcgis.features import GeoAccessor, GeoSeriesAccessor
+from arcgis.geometry import Geometry, Polyline, lengths
 import pandas as pd
 from pathlib import Path
 import numpy as np
-import os
-
+import os, sys
 # Compare the redline NGD_AL data against the source data to detect changes
 #
 # Data processing is split into two paths - geometry changes or attribute changes. These paths represent whether data 
@@ -43,8 +44,8 @@ def sql_normalize_value(value):
 
 
 # load environment to get settings
-load_dotenv()
-
+BASEDIR = os.getcwd()
+load_dotenv(os.path.join(BASEDIR, 'environments.env'))
 # tracing of the types of changes being applied
 change_type = Counter()
 
@@ -71,12 +72,12 @@ ngdal_layer = os.getenv('NGD_NGDAL_LAYER')
 ngdstreet_path = Path(os.getenv('NGD_NGDSTREET_DATA'))
 
 print("Reading NGD_AL source data at", ngd_db_path, "from layer", ngdal_layer)
-ngdal = gpd.read_file(ngd_db_path, layer=ngdal_layer)
+ngdal = pd.DataFrame.spatial.from_featureclass(os.path.join(ngd_db_path.as_posix(), ngdal_layer), sr= '3347')
 print("Loaded", len(ngdal), "records.")
 
 # alias UID fields were not included in the original redline layer, so add them on
 print("Reading redline data at", redline_path, "from layer", redline_layer)
-redline = (gpd.read_file(redline_path, layer=redline_layer)
+redline = (pd.DataFrame.spatial.from_featureclass( os.path.join(redline_path.as_posix(), redline_layer), sr= '3347')
           .merge(ngdal[[ngd_uid_field, 'ALIAS1_STR_UID_L', 'ALIAS1_STR_UID_R', 'ALIAS2_STR_UID_L', 'ALIAS2_STR_UID_R']], 
                 on=ngd_uid_field, how='left'))
 redline['CreationDate'] = pd.to_datetime(redline['CreationDate'], unit='ms')
@@ -109,8 +110,21 @@ print("Attibute changes:", len(attr_change))
 print("Looking for changed geometries...")
 geom_rounding_factor = float(os.getenv('NGD_GEOM_ROUNDING_FACTOR', 0.1))
 print("Using length change tolerance of", geom_rounding_factor)
-attr_change['geom_threshold'] = (attr_change.geometry.length * geom_rounding_factor).round(0)
-ngdal['length_threshold'] = (ngdal.geometry.length * geom_rounding_factor).round(0)
+
+# inefficient way to get the length of each line segment for each data frame
+lines = []
+for i in range(len(attr_change)):
+    path = attr_change.iloc[i]["SHAPE"]
+    lines.append(Polyline(path).length)
+attr_change['geom'] = lines
+attr_change['geom_threshold'] = round((attr_change['geom'] * geom_rounding_factor), 0)
+
+lines2 = []
+for i in range(len(ngdal)):
+    path = ngdal.iloc[i]["SHAPE"]
+    lines2.append(Polyline(path).length)
+ngdal['geom'] = lines2
+ngdal['length_threshold'] = round((ngdal['geom'] * geom_rounding_factor), 0)
 
 print("Comparing redline vs NGD_AL geometry lengths.")
 geom_change_detect = attr_change.merge(ngdal[[ngd_uid_field,'length_threshold']], on=ngd_uid_field)
@@ -230,6 +244,7 @@ for searcher in street_name_searchers:
             uid = group[ngd_uid_field].tolist()[0]
             sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
             stmts.append(sql + END_SQL_STMT)
+            
             # name changes also have a source attribute that needs to be updated
             if searcher['grouper'][1] == 'STR_NME':
                 src_side = searcher['grouper'][0][-2:]
@@ -240,6 +255,13 @@ for searcher in street_name_searchers:
                     name_source_value = 'NGD'
                 sql = f"UPDATE {NGD_TBL_NAME} SET {name_source_field}='{name_source_value}' WHERE {ngd_uid_field}={uid}"
                 stmts.append(sql + END_SQL_STMT)
+        
+             # reset EC name UID attributes to trigger a change on their side
+            if searcher['ngdal_uid_field'].startswith('NGD_STR_UID'):
+                ec_field_name = searcher['ngdal_uid_field'].replace('NGD_STR_UID', 'EC_STR_ID')
+                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}=-1 WHERE {ngd_uid_field}={uid}"
+                stmts.append(sql + END_SQL_STMT)
+
         else:
             # this is a new street name so it is added to the new geometries workflow
             change_type['geom'] += 1
@@ -251,7 +273,6 @@ for searcher in street_name_searchers:
                 geom_change = pd.concat([geom_change, group.replace(-1, np.nan)])
     
     print("Changes:", change_type)
-
 # remove any geometries that were added onto the new geometry workflow
 attr_change = attr_change[~attr_change[ngd_uid_field].isin(geom_change[ngd_uid_field].unique().tolist())]
 # reset the filler values
@@ -270,7 +291,6 @@ print(f"Processing fields that set {target_date_field}.")
 fields = ['SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE', 'ADDR_TYP_L', 'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R']
 for index, row in attr_change.iterrows():
     uid = row[ngd_uid_field]
-
     for fieldname in fields:
         red_val = sql_normalize_value(row[fieldname])
         ngd_val = ngdal[ngdal[ngd_uid_field] == uid].reset_index().at[0, fieldname]
@@ -289,7 +309,6 @@ for index, row in attr_change.iterrows():
             change_type['same'] += 1
 
 print("Changes:", change_type)
-
 # process address values on the NGD_AL, which have a date field that matches their name
 print(f"Processing address fields.")
 fields = ['AFL_VAL', 'AFL_SFX', 'AFL_SRC', 'ATL_VAL', 'ATL_SFX', 'ATL_SRC', 
@@ -332,4 +351,4 @@ with attr_changes_path.open(mode='w') as sqlfile:
 
 # write GeoJSON for new geometries
 print("Geometry changes:", len(geom_change))
-geom_change.to_file(geom_changes_path, driver='GeoJSON')
+geom_change.spatial.to_featureclass(geom_changes_path)
