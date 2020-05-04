@@ -1,6 +1,7 @@
 import os, sys, arcpy
 from arcgis.gis import GIS
 from arcgis.features import FeatureLayer
+from dotenv import load_dotenv
 
 arcpy.env.overwriteOutput = True
 
@@ -186,8 +187,16 @@ def fix_address_field_errors(bad_redline_rows, o_gdb, o_name):
         arcpy.SelectLayerByAttribute_management(fl, where_clause= query1)
         arcpy.CalculateField_management(fl, 'AT' + d + '_VAL', '!AF' + d + '_VAL!')
         arcpy.SelectLayerByAttribute_management(fl, 'NEW_SELECTION', query2)
-        arcpy.CalculateField_management(fl, 'AF' + d + '_VAL', '!AT' + d + '_VAL!')
-        code = '''
+        arcpy.CalculateField_management(fl, 'AF' + d + '_VAL', '!AT' + d + '_VAL!')    
+    #Export changes and overwrite prior redline file
+    arcpy.SelectLayerByAttribute_management(fl, 'CLEAR_SELECTION')
+    arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name + '_bad_addr')
+    return os.path.join(o_gdb, o_name + '_bad_addr') 
+
+def qc_PRTY_vals(redline_rows, o_gdb, o_name):
+    # This needs to check every row so put after merge 
+    fl = arcpy.MakeFeatureLayer_management(redline_rows, 'fl')
+    code = '''
 def ADDR_PRTY_FIXER(AF_VAL, AT_VAL):
     AF_int = int(AF_VAL)
     AT_int = int(AT_VAL)
@@ -200,13 +209,28 @@ def ADDR_PRTY_FIXER(AF_VAL, AT_VAL):
     if (AF_int % 2) != 0 and (AT_int % 2) == 0:
         return 'M'
         '''
+    for d in ['L', 'R']:
+        
         arcpy.SelectLayerByAttribute_management(fl, 'NEW_SELECTION', where_clause= 'ADDR_PRTY_' + d + ' IS NULL')
         arcpy.CalculateField_management(fl, 'ADDR_PRTY_' + d, 'ADDR_PRTY_FIXER(!AF' + d + '_VAL!, !AT' + d + '_VAL!)', 
-                                        'PYTHON3', code_block= code)    
-    #Export changes and overwrite prior redline file
+                                        'PYTHON3', code_block= code)
+    arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name)
+    return os.path.join(o_gdb, o_name)
+
+def fix_null_src_vals(bad_redline_rows, o_gdb, o_name):
+    fl = arcpy.MakeFeatureLayer_management(bad_redline_rows, 'fl')
+    #Select all rows in which the F_SRC val is not null and the T_SRC val is null and make the same
+    for d in ['L', 'R']:
+        query1 = 'AT{}_SRC IS NULL AND AF{}_SRC IS NOT NULL'.format(d, d)
+        query2 = 'AF{}_SRC IS NOT NULL AND AT{}_SRC IS NULL'.format(d, d)
+        arcpy.SelectLayerByAttribute_management(fl, 'NEW_SELECTION', where_clause= query1)
+        arcpy.CalculateField_management(fl, 'AT' + d +'_SRC', '!AF' + d + '_SRC!')
+        arcpy.SelectLayerByAttribute_management(fl, 'NEW_SELECTION', where_clause= query2)
+        arcpy.CalculateField_management(fl, 'AF' + d + '_SRC', '!AT' + d + '_SRC!')
+    #Export Corrected data
     arcpy.SelectLayerByAttribute_management(fl, 'CLEAR_SELECTION')
     arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name + '_bad_addr')
-    return os.path.join(o_gdb, o_name + '_bad_addr') 
+    return os.path.join(o_gdb, o_name + '_bad_addr')
 
 def delete_non_essentials(gdb, keepFile_name):
     #Deletes contents of a GDB except for the specified keep file
@@ -220,6 +244,7 @@ def delete_non_essentials(gdb, keepFile_name):
 
 #------------------------------------------------------------------------------------------------------------
 # inputs
+load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 
 directory = os.getcwd() # Will return the directory that this file is currently in.
 url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline/FeatureServer' # URL for AGOL NGD_Redline data
@@ -230,14 +255,13 @@ o_name = 'NGD_STREET_Redline' # Name for final output file
 #Create fgdb for the downloaded data and intermediate files 
 if not arcpy.Exists(o_gdb):
     arcpy.CreateFileGDB_management(directory, gdb_name)
-
-print('Input whether you want allrecords with NGD_UIDs (True) or all records without (False):')
+print('Input whether you want all records with NGD_UIDs (True) or all records without (False):')
 NGD_UIDs = input()
-
-print('Indicate the date you want records extraction to start at (format: YYYY-MM-DD):')
+print('input from date')
 from_date = input()
-print('Indicate the date you want records extraction to end on (format: YYYY-MM-DD):')
+print('input to date')
 to_date = input()
+print('Settings: NGD_UIDS- {}, From Date- {}, To Date- {}'.format(NGD_UIDs, from_date, to_date))
 
 #--------------------------------------------------------------------------------------------------------------
 #Calls
@@ -249,7 +273,7 @@ filtered = filter_data_remove_duplicates(results, o_gdb, o_name)
 print('Running address fields QC checks')
 checked = address_field_check(filtered, o_gdb, o_name, NGD_UIDs)
 
-if NGD_UIDs == True:
+if NGD_UIDs != False:
     print('Getting only NGD_UIDs in redline data')
     uids = unique_values(results, 'NGD_UID')
     arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
@@ -261,10 +285,13 @@ outFC_nme = os.path.join(o_gdb, o_name)
 out_GeoJSON_nme = os.path.join(directory, o_name + '.geojson')
 if checked[1] == None:
     arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
+    qc_PRTY_vals(checked[0], o_gdb, o_name)
     arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
     delete_non_essentials(o_gdb, o_name)
 if checked[1] != None:
     fix_address_field_errors(checked[1], o_gdb, o_name)
+    fix_null_src_vals(checked[1], o_gdb, o_name)
+    qc_PRTY_vals(checked[1], o_gdb, o_name)
     arcpy.Delete_management(os.path.join(o_gdb, o_name))
     if checked[0] != None:
         arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
