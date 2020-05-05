@@ -297,11 +297,17 @@ for index, row in attr_change.iterrows():
         date_val = row[edit_date_field].strftime(sql_date_format)
 
         # don't bother processing if there is no value in the redline layer
-        if red_val and (ngd_val != red_val):
+        if(ngd_val != red_val) and (pd.notna(red_val) | pd.notna(ngd_val)):
             # need to put quotes on string values for the SQL query
             if type(red_val) is str:
                 red_val = f"'{red_val}'"
-
+                # -1 values are due to the fillna operation, so set those to NULL
+            if red_val == -1 or red_val == None:
+                red_val = "NULL"
+            # -1 values are due to the fillna operation, so set those to NULL
+            if red_val == -1 or red_val == None:
+                red_val = "NULL"
+            
             sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
@@ -326,7 +332,7 @@ for index, row in attr_change.iterrows():
         target_date_field = field_parts[0] + "_DTE"
 
         # don't bother processing if there is no value in the redline layer
-        if red_val and (ngd_val != red_val):
+        if (ngd_val != red_val) and (pd.notna(red_val) | pd.notna(ngd_val)):
             # need to put quotes on string values for the SQL query
             if type(red_val) is str:
                 red_val = f"'{red_val}'"
@@ -351,4 +357,18 @@ with attr_changes_path.open(mode='w') as sqlfile:
 
 # write GeoJSON for new geometries
 print("Geometry changes:", len(geom_change))
-geom_change.spatial.to_featureclass(geom_changes_path)
+all_fields = ['OBJECTID', 'GlobalID', 'Shape__Length', 'CreationDate',	'Creator', 'EditDate', 'Editor', 'NGD_UID', 
+        'SGMNT_TYP_CDE', 'SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE', 'BB_UID_L', 'BB_UID_R',	'BF_UID_L',	'BF_UID_R',	
+        'AFL_VAL', 'AFL_SFX', 'AFL_SRC', 'ATL_VAL', 'ATL_SFX', 'ATL_SRC', 'AFR_VAL', 'AFR_SFX', 'AFR_SRC',
+        'ATR_VAL', 'ATR_SFX', 'ATR_SRC', 'ADDR_TYP_L', 'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R', 'NGD_STR_UID_L',
+        'NGD_STR_UID_R', 'NGD_STR_UID_DTE_L', 'NGD_STR_UID_DTE_R', 'CSD_UID_L', 'CSD_UID_R', 'PLACE_ID_L', 'PLACE_ID_R',	
+        'PLACE_ID_L_PREV', 'PLACE_ID_R_PREC', 'NAME_SRC_L', 'NAME_SRC_R', 'FED_NUM_L', 'FED_NUM_R', 'STR_NME',	
+        'STR_TYP', 'STR_DIR', 'NAME_SRC', 'STR_NME_ALIAS1', 'STR_TYP_ALIAS1', 'STR_DIR_ALIAS1', 'NAME_SRC_ALIAS1',
+        'STR_NME_ALIAS2', 'STR_TYP_ALIAS2', 'STR_DIR_ALIAS2', 'NME_SRC_ALIAS2', 'STR_RH_DIFF_FLG', 'Comments',
+        'SHAPE','ALIAS1_STR_UID_L',	'ALIAS1_STR_UID_R',	'ALIAS2_STR_UID_L',	'ALIAS2_STR_UID_R',	'geom',	'geom_threshold']
+
+fields = ['OBJECTID', 'NGD_UID', 'SHAPE']
+
+geom_change[fields].spatial.to_featureclass(os.path.join(Path(os.getenv('NGD_NEW_GEOM_PATH'), 'redline_geom')))
+
+print('DONE!')
