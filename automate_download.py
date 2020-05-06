@@ -1,11 +1,13 @@
 import os, sys, arcpy
+import pandas as pd
 from arcgis.gis import GIS
+from arcgis.features import GeoAccessor
 from arcgis.features import FeatureLayer
 from dotenv import load_dotenv
 
 arcpy.env.overwriteOutput = True
 
-def auto_download_data(data_url, outGDB, outname, att_or_geo, from_date, to_date, fieldPrefix= 'WC2021NGD_AL_20200313_'):
+def auto_download_data(data_url, outGDB, outname, from_date, to_date):
     """ Requires you to be logged into arcgis pro on this computer with an account that has access to the data you are trying to 
     download. You must be logged into arcGIS pro with your statscan AGOL account in order for this to work. This funtion will
     go into the NGD group via the arcGIS portal and download a specific feature layer as determined by the variable. Date format
@@ -19,12 +21,9 @@ def auto_download_data(data_url, outGDB, outname, att_or_geo, from_date, to_date
     
     #layer = FeatureLayer(data_url)
     #layer_date_query = layer.query(where= "EditDate BETWEEN DATE '2020-04-10' AND DATE '2020-04-15'")
-    if att_or_geo:
-        query = fieldPrefix + "NGD_UID IS NOT NULL AND EditDate BETWEEN DATE '{}' AND DATE '{}'".format(from_date, to_date)
-        arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= query)
-    if not att_or_geo:
-        query = fieldPrefix + "NGD_UID IS NULL AND EditDate BETWEEN DATE '{}' AND DATE '{}'".format(from_date, to_date)
-        arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= fieldPrefix + "NGD_UID IS NULL")
+
+    query = "EditDate BETWEEN DATE '{}' AND DATE '{}'".format(from_date, to_date)
+    arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= query)
     return os.path.join(outGDB, outname)
 
 def rename_the_fields(NGD_data):
@@ -110,27 +109,26 @@ def rename_the_fields(NGD_data):
 
 def unique_values(fc, field):
     # Returns a list off unique values for a given field in the unput dataset
+    fl = arcpy.MakeFeatureLayer_management(fc, 'fl', where_clause= 'NGD_UID IS NOT NULL')
     with arcpy.da.SearchCursor(fc, field_names= [field]) as cursor:
         return sorted({row[0] for row in cursor})
 
 def filter_data_remove_duplicates(Redline_data, outGDB, outName):
     # Start by finding the most recent date for each NGD_UID and keeping only that date
+    # Read rows into a pandas dataframe
+    df = pd.DataFrame.spatial.from_featureclass(Redline_data, sr= '3347')
     KeepRows = []
     for uid in unique_values(Redline_data, 'NGD_UID'):
-        if uid == None:
-            print('NGD_UID is None no filtering required')
-            return os.path.join(outGDB, outName)
-        fieldnames = ['NGD_UID', 'EditDate']
-        fl = arcpy.MakeFeatureLayer_management(Redline_data, 'fl', where_clause= fieldnames[0] + '= ' + str(uid))
-        max_date = max(unique_values(fl, fieldnames[1]))
-        with arcpy.da.SearchCursor(fl, field_names= ['OBJECTID', fieldnames[1]]) as cursor:
-            for row in cursor:
-                if row[1] == max_date:
-                    KeepRows.append(row[0])
-    fl = arcpy.MakeFeatureLayer_management(Redline_data, 'fl2')    
-    arcpy.SelectLayerByAttribute_management(fl, where_clause= "OBJECTID IN " + str(tuple(KeepRows)))
-    arcpy.FeatureClassToFeatureClass_conversion(fl, outGDB, outName + '_uniques')
-    return os.path.join(outGDB, outName)
+        uid_rows = df.loc[df['NGD_UID'] == uid ]
+        maxDateRow = uid_rows.loc[uid_rows['EditDate'] == uid_rows.EditDate.max()]
+        print(maxDateRow)
+        KeepRows.append(maxDateRow.iloc[0]['OBJECTID'])
+    print('Keeping ' + str(len(KeepRows)) + ' rows from Redline data')
+    arcpy.FeatureClassToFeatureClass_conversion(Redline_data, 
+                                                outGDB, 
+                                                outName + '_uniques', 
+                                                where_clause= "OBJECTID IN " + str(tuple(KeepRows)))
+    return os.path.join(outGDB, outName + '_uniques')
 
 def address_field_check(redline_data, out_gdb, out_base_name, w_NGD_UID= True):
     print('Running address field changes check')
@@ -166,7 +164,7 @@ def address_field_check(redline_data, out_gdb, out_base_name, w_NGD_UID= True):
             good_rows.append(row[0])
     print('Exporting sorted rows')
     outlist = [None, None]
-    
+    print('Good rows: ' + str(len(good_rows)) + ' Rows to QC: ' + str(len(fail_rows)))
     if len(good_rows) > 0:
         arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_goodAddr',  
                                                     where_clause= uid_field + ' IN ' + str(tuple(good_rows)))
@@ -254,52 +252,68 @@ o_name = 'NGD_STREET_Redline' # Name for final output file
 
 #Create fgdb for the downloaded data and intermediate files 
 if not arcpy.Exists(o_gdb):
+    print('Creating GDB')
     arcpy.CreateFileGDB_management(directory, gdb_name)
-print('Input whether you want all records with NGD_UIDs (True) or all records without (False):')
-NGD_UIDs = input()
-print('input from date')
-from_date = input()
-print('input to date')
-to_date = input()
-print('Settings: NGD_UIDS- {}, From Date- {}, To Date- {}'.format(NGD_UIDs, from_date, to_date))
+
+from_date = os.getenv('FROM_DATE')
+to_date = os.getenv('TO_DATE')
+print('Settings: From Date- {}, To Date- {}'.format(from_date, to_date))
 
 #--------------------------------------------------------------------------------------------------------------
 #Calls
 print('Running script')
-results = auto_download_data(url, o_gdb, o_name, NGD_UIDs, from_date, to_date)
+results = auto_download_data(url, o_gdb, o_name, from_date, to_date)
 rename_the_fields(results)
-print('Filtering to remove duplicate records (only when running on records that contain NGD_UIDs)')
-filtered = filter_data_remove_duplicates(results, o_gdb, o_name)
-print('Running address fields QC checks')
-checked = address_field_check(filtered, o_gdb, o_name, NGD_UIDs)
 
-if NGD_UIDs != False:
-    print('Getting only NGD_UIDs in redline data')
-    uids = unique_values(results, 'NGD_UID')
-    arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
-                                                os.path.join(directory, o_gdb), 
-                                                'WC2021NGD_AL_20200313',
-                                                'NGD_UID IN ' + str(tuple(uids)))
+print('Splitting records into NGD_UIDs and Null NGD_UIDs')
+w_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_NGD_UID', 'NGD_UID IS NOT NULL')
+no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_no_NGD_UID', 'NGD_UID IS NULL')
+
+print('Filtering to remove duplicate records (only running on records that contain NGD_UIDs)')
+filtered = filter_data_remove_duplicates(w_NGD_UIDs, o_gdb, o_name)
+sys.exit()
+print('Running address fields QC checks')
+checked_w_NGD_UID = address_field_check(filtered, o_gdb, o_name + '_ch_w_uid', True)
+checked_no_NGD_UID = address_field_check(no_NGD_UIDs, o_gdb, o_name + '_ch_no_uid', w_NGD_UID= False)
+
+files = []
+for fc in checked_no_NGD_UID + checked_w_NGD_UID:
+    if type(fc) != None: files.append(fc)
+
+print('Merging ' + str(len(files)) + ' files') 
+merged = arcpy.Merge_management(files, os.path.join(o_gdb, o_name + '_merged'))
+
+print('Getting only NGD_UIDs in redline data')
+
+# uids = unique_values(results, 'NGD_UID')
+# print('Filtering NGD_AL data')
+# arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
+#                                             os.path.join(directory, o_gdb), 
+#                                             'WC2021NGD_AL_20200313',
+#                                             'NGD_UID IN ' + str(tuple(uids)))
+
 print('Merging all records and exporting to final feature class')
 outFC_nme = os.path.join(o_gdb, o_name)
-out_GeoJSON_nme = os.path.join(directory, o_name + '.geojson')
-if checked[1] == None:
-    arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
-    qc_PRTY_vals(checked[0], o_gdb, o_name)
-    arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
-    delete_non_essentials(o_gdb, o_name)
-if checked[1] != None:
-    fix_address_field_errors(checked[1], o_gdb, o_name)
-    fix_null_src_vals(checked[1], o_gdb, o_name)
-    qc_PRTY_vals(checked[1], o_gdb, o_name)
-    arcpy.Delete_management(os.path.join(o_gdb, o_name))
-    if checked[0] != None:
-        arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
-        arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
-        delete_non_essentials(o_gdb, o_name)
-    else: 
-        arcpy.FeatureClassToFeatureClass_conversion(checked[1], o_gdb, o_name)
-        arcpy.FeaturesToJSON_conversion(outFC_nme, out_GeoJSON_nme, geoJSON= 'GEOJSON')
-        delete_non_essentials(o_gdb, o_name)
+
+fix_address_field_errors(merged, o_gdb, o_name)
+fix_null_src_vals(merged, o_gdb, o_name)
+qc_PRTY_vals(merged, o_gdb, o_name)
+arcpy.Delete_management(os.path.join(o_gdb, o_name))
+
+# if checked[1] == None:
+#     arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
+#     qc_PRTY_vals(checked[0], o_gdb, o_name)
+#     delete_non_essentials(o_gdb, o_name)
+# if checked[1] != None:
+#     fix_address_field_errors(checked[1], o_gdb, o_name)
+#     fix_null_src_vals(checked[1], o_gdb, o_name)
+#     qc_PRTY_vals(checked[1], o_gdb, o_name)
+#     arcpy.Delete_management(os.path.join(o_gdb, o_name))
+#     if checked[0] != None:
+#         arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
+#         delete_non_essentials(o_gdb, o_name)
+#     else: 
+#         arcpy.FeatureClassToFeatureClass_conversion(checked[1], o_gdb, o_name)
+#         delete_non_essentials(o_gdb, o_name)
 
 print('DONE!')
