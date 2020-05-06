@@ -228,16 +228,6 @@ def fix_null_src_vals(bad_redline_rows, o_gdb, o_name):
     arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name + '_bad_addr')
     return os.path.join(o_gdb, o_name + '_bad_addr')
 
-def delete_non_essentials(gdb, keepFile_name):
-    #Deletes contents of a GDB except for the specified keep file
-    arcpy.env.workspace = gdb
-    print('Deleting intermediate files')    
-    fcs = arcpy.ListFeatureClasses()
-    if len(fcs)> 0 and type(fcs) != None:
-        for f in arcpy.ListFeatureClasses(gdb):
-            if arcpy.Exists(f) and f != keepFile_name:
-                arcpy.Delete_management(f)
-
 #------------------------------------------------------------------------------------------------------------
 # inputs
 load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
@@ -281,13 +271,8 @@ for fc in checked_no_NGD_UID + checked_w_NGD_UID:
 print('Merging ' + str(len(files)) + ' files') 
 merged = arcpy.Merge_management(files, os.path.join(o_gdb, o_name + '_merged'))
 
-print('Getting only NGD_UIDs in redline data')
+#Get only NGD_UIDs in redline data for NGD_AL filtering
 uids = unique_values(filtered, 'NGD_UID')
-print('Filtering NGD_AL data')
-arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
-                                            os.path.join(directory, o_gdb), 
-                                            'WC2021NGD_AL_20200313',
-                                            'NGD_UID IN ' + str(tuple(uids)))
 
 outFC_nme = os.path.join(o_gdb, o_name)
 print('Performing final address QC')
@@ -296,6 +281,17 @@ fix_null_src_vals(merged, o_gdb, o_name)
 qc_PRTY_vals(merged, o_gdb, o_name)
 print('Merging all records and exporting to final feature class')
 arcpy.Merge_management(merged, os.path.join(o_gdb, o_name))
-#delete_non_essentials(o_gdb, o_name)
+
+print('Deleting non essential feature classes')
+arcpy.env.workspace = o_gdb
+for fc in arcpy.ListFeatureClasses():
+    if fc != o_name:
+        arcpy.Delete_management(fc) 
+
+print('Filtering NGD_AL data')
+arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
+                                            os.path.join(directory, o_gdb), 
+                                            'WC2021NGD_AL_20200313',
+                                            'NGD_UID IN ' + str(tuple(uids)))  
 
 print('DONE!')
