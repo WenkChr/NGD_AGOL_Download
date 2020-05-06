@@ -16,10 +16,10 @@ Detecting differences consists of running multiple scripts that do different thi
 
 Run the automate_download.py script. Ensure that the .env file contains a the following information:
 
-- Indicate the date to begin extracting records from in the format YYYY-MM-DD all inputs should be numeric. For example, 
+-A FROM_DATE variable to begin extracting records from in the format YYYY-MM-DD all inputs should be numeric. For example, 
 April 11th, 2020 would be 2020-04-11.
 
-- Indicate the date to end extraction on (inclusive). Date format should be the same as the previous input (YYYY_MM_DD)
+- A TO_DATE to end extraction on (inclusive). Date format should be the same as the previous input (YYYY_MM_DD)
 
 The file geodatabase will be created in the directory where the automate_download.py file is located. The primary file to be 
 concerned with is the NGD_STREET_Redline all othe files are intermediate and 
