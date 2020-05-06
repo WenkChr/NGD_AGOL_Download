@@ -14,10 +14,7 @@ Detecting differences consists of running multiple scripts that do different thi
 
 ### Step 1 - Download the redline data
 
-Run the automate_download.py script. You will be prompted to input some information:
-- Indicate whether you want all records with NDS_UIDs or all records without NGD_UIDs. This input should be either True or False
-Indicating True will mean that the downloader will download all records with NGD_UIDs from AGOL and indicating False will download 
-all records without NGD_UIDs from AGOL.
+Run the automate_download.py script. Ensure that the .env file contains a the following information:
 
 - Indicate the date to begin extracting records from in the format YYYY-MM-DD all inputs should be numeric. For example, 
 April 11th, 2020 would be 2020-04-11.
@@ -35,21 +32,21 @@ manually, you can create a `.env` file with the following contents (adjust for y
 
 ```
 # Locations of specific data files
-NGD_DATA_DIR=/Users/goatsweater/Projects/stc/NGD
+NGD_DATA_DIR=H:/NGD_AGOL_Download
 
 # Where to find the original NGD data
-NGD_NGDAL_DATA=${NGD_DATA_DIR}/ngd_national.gdb
-NGD_NGDAL_LAYER=WC2021NGD_AL_20200313
+NGD_NGDAL_DATA=${NGD_DATA_DIR}/NGD_Redline.gdb
+NGD_NGDAL_LAYER='WC2021NGD_AL_20200313'
 
 NGD_NGDSTREET_DATA=${NGD_DATA_DIR}/ngd_street.csv
 # NGD_NGDSTREET_LAYER=NGD_STREET
 
 # Where to get redline data that was downloaded
-NGD_REDLINE_DATA=${NGD_DATA_DIR}/redline_2020-04-21.geojson
-# NGD_REDLINE_LAYER=
+NGD_REDLINE_DATA=${NGD_DATA_DIR}/NGD_Redline.gdb
+NGD_REDLINE_LAYER='NGD_STREET_Redline'
 
 # Where to save outputs
-NGD_NEW_GEOM_PATH=${NGD_DATA_DIR}/redline_new_geom.geojson
+NGD_NEW_GEOM_PATH=${NGD_NGDAL_DATA}
 NGD_ATTR_SQL_PATH=${NGD_DATA_DIR}/redline_attr_change.sql
 
 # Date field in the redline that marks when data was modified
@@ -62,6 +59,16 @@ NGD_GEOM_ROUNDING_FACTOR=0.1
 NGD_TBL_NAME=NGD.NGD_AL
 NGD_UID_FIELD=NGD_UID
 NGD_DATE_FORMAT_STRING=%Y-%m-%d
+
+#automate_download inputs
+FROM_DATE='2020-04-01'
+TO_DATE='2020-04-30'
+
+#automate_upload inputs
+LAYER_TITLE = Redline
+
+GEOM_CHANGES_DATA = ${NGD_DATA_DIR}/NGD_Redline.gdb
+GEOM_LAYER = 'redline_geom'
 ```
 
 For ease of use, the file can be created in the same directory as `detect_changes.py`.
@@ -75,4 +82,4 @@ data that is to be processed through the NGD editor and an SQL file that can be 
 ### Step 3 - Upload GeoJSON to AGOL
 
 The GeoJSON file is added back to the AGOL environment to allow NGD editors to load it into their desktop environment 
-as a reference layer.
+as a reference layer. Layer is also shared with the 'NGD' AGOL group for them to access. 
