@@ -28,8 +28,8 @@ print( 'Uploading feature layer with ' + str(len(geom_changes)) + ' records to A
 geom_fl = geom_changes.spatial.to_featurelayer(
                                     title= fl_title, 
                                     gis= GIS('pro'), 
-                                    tags= 'NGD_AL, Redline, ' + str(date.today())
-                                    )
+                                    tags= 'NGD_AL, Redline, ' + str(date.today()))
+
 print('Sharing Layer with NGD')
-geom_fl.share( everyone= False, groups= gis.groups.search('title: NGD')[0].groupid)
+geom_fl.share( groups= gis.groups.search('title:NGD')[0].groupid)
 print('Upload Complete')
