@@ -114,14 +114,12 @@ def unique_values(fc, field):
         return sorted({row[0] for row in cursor})
 
 def filter_data_remove_duplicates(Redline_data, outGDB, outName):
-    # Start by finding the most recent date for each NGD_UID and keeping only that date
     # Read rows into a pandas dataframe
     df = pd.DataFrame.spatial.from_featureclass(Redline_data, sr= '3347')
     KeepRows = []
     for uid in unique_values(Redline_data, 'NGD_UID'):
         uid_rows = df.loc[df['NGD_UID'] == uid ]
         maxDateRow = uid_rows.loc[uid_rows['EditDate'] == uid_rows.EditDate.max()]
-        print(maxDateRow)
         KeepRows.append(maxDateRow.iloc[0]['OBJECTID'])
     print('Keeping ' + str(len(KeepRows)) + ' rows from Redline data')
     arcpy.FeatureClassToFeatureClass_conversion(Redline_data, 
