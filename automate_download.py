@@ -269,7 +269,7 @@ no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name
 
 print('Filtering to remove duplicate records (only running on records that contain NGD_UIDs)')
 filtered = filter_data_remove_duplicates(w_NGD_UIDs, o_gdb, o_name)
-sys.exit()
+
 print('Running address fields QC checks')
 checked_w_NGD_UID = address_field_check(filtered, o_gdb, o_name + '_ch_w_uid', True)
 checked_no_NGD_UID = address_field_check(no_NGD_UIDs, o_gdb, o_name + '_ch_no_uid', w_NGD_UID= False)
@@ -282,36 +282,20 @@ print('Merging ' + str(len(files)) + ' files')
 merged = arcpy.Merge_management(files, os.path.join(o_gdb, o_name + '_merged'))
 
 print('Getting only NGD_UIDs in redline data')
+uids = unique_values(filtered, 'NGD_UID')
+print('Filtering NGD_AL data')
+arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
+                                            os.path.join(directory, o_gdb), 
+                                            'WC2021NGD_AL_20200313',
+                                            'NGD_UID IN ' + str(tuple(uids)))
 
-# uids = unique_values(results, 'NGD_UID')
-# print('Filtering NGD_AL data')
-# arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
-#                                             os.path.join(directory, o_gdb), 
-#                                             'WC2021NGD_AL_20200313',
-#                                             'NGD_UID IN ' + str(tuple(uids)))
-
-print('Merging all records and exporting to final feature class')
 outFC_nme = os.path.join(o_gdb, o_name)
-
+print('Performing final address QC')
 fix_address_field_errors(merged, o_gdb, o_name)
 fix_null_src_vals(merged, o_gdb, o_name)
 qc_PRTY_vals(merged, o_gdb, o_name)
-arcpy.Delete_management(os.path.join(o_gdb, o_name))
-
-# if checked[1] == None:
-#     arcpy.FeatureClassToFeatureClass_conversion(checked[0], o_gdb, o_name)
-#     qc_PRTY_vals(checked[0], o_gdb, o_name)
-#     delete_non_essentials(o_gdb, o_name)
-# if checked[1] != None:
-#     fix_address_field_errors(checked[1], o_gdb, o_name)
-#     fix_null_src_vals(checked[1], o_gdb, o_name)
-#     qc_PRTY_vals(checked[1], o_gdb, o_name)
-#     arcpy.Delete_management(os.path.join(o_gdb, o_name))
-#     if checked[0] != None:
-#         arcpy.Merge_management(checked, os.path.join(o_gdb, o_name))
-#         delete_non_essentials(o_gdb, o_name)
-#     else: 
-#         arcpy.FeatureClassToFeatureClass_conversion(checked[1], o_gdb, o_name)
-#         delete_non_essentials(o_gdb, o_name)
+print('Merging all records and exporting to final feature class')
+arcpy.Merge_management(merged, os.path.join(o_gdb, o_name))
+#delete_non_essentials(o_gdb, o_name)
 
 print('DONE!')
