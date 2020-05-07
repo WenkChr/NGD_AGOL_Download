@@ -16,10 +16,10 @@ Detecting differences consists of running multiple scripts that do different thi
 
 Run the automate_download.py script. Ensure that the .env file contains a the following information:
 
--A FROM_DATE variable to begin extracting records from in the format YYYY-MM-DD all inputs should be numeric. For example, 
-April 11th, 2020 would be 2020-04-11.
+-A FROM_DATE variable to begin extracting records from in the format YYYY-MM-DD HH:MM:SS all inputs should be numeric and all
+clock times should be in the 24 hour clock. For example, April 11th, 2020 11:30 PM would be '2020-04-11 23:30:00'.
 
-- A TO_DATE to end extraction on (inclusive). Date format should be the same as the previous input (YYYY_MM_DD)
+- A TO_DATE to end extraction on (inclusive). Date format should be the same as the previous input (YYYY_MM_DD HH:MM:SS)
 
 The file geodatabase will be created in the directory where the automate_download.py file is located. The primary file to be 
 concerned with is the NGD_STREET_Redline all othe files are intermediate and 
@@ -61,8 +61,8 @@ NGD_UID_FIELD=NGD_UID
 NGD_DATE_FORMAT_STRING=%Y-%m-%d
 
 #automate_download inputs
-FROM_DATE='2020-04-01'
-TO_DATE='2020-04-30'
+FROM_DATE_TIME='2020-04-01 06:00:00'
+TO_DATE_TIME='2020-04-30 23:59:59'
 
 #automate_upload inputs
 LAYER_TITLE = Redline
