@@ -19,10 +19,7 @@ def auto_download_data(data_url, outGDB, outname, from_date, to_date):
     if os.path.split(data_url)[1] != '0':
         data_url = os.path.join(data_url, '0')
     
-    #layer = FeatureLayer(data_url)
-    #layer_date_query = layer.query(where= "EditDate BETWEEN DATE '2020-04-10' AND DATE '2020-04-15'")
-
-    query = "EditDate BETWEEN DATE '{}' AND DATE '{}'".format(from_date, to_date)
+    query = "EditDate BETWEEN TIMESTAMP '{}' AND TIMESTAMP '{}'".format(from_date, to_date)
     arcpy.FeatureClassToFeatureClass_conversion(data_url, outGDB, outname, where_clause= query)
     return os.path.join(outGDB, outname)
 
@@ -116,6 +113,9 @@ def unique_values(fc, field):
 def filter_data_remove_duplicates(Redline_data, outGDB, outName):
     # Read rows into a pandas dataframe
     df = pd.DataFrame.spatial.from_featureclass(Redline_data, sr= '3347')
+    if len(df) == 0:
+        print('Length of rows is 0 exiting script')
+        sys.exit()
     KeepRows = []
     for uid in unique_values(Redline_data, 'NGD_UID'):
         uid_rows = df.loc[df['NGD_UID'] == uid ]
@@ -243,8 +243,8 @@ if not arcpy.Exists(o_gdb):
     print('Creating GDB')
     arcpy.CreateFileGDB_management(directory, gdb_name)
 
-from_date = os.getenv('FROM_DATE')
-to_date = os.getenv('TO_DATE')
+from_date = os.getenv('FROM_DATE_TIME')
+to_date = os.getenv('TO_DATE_TIME')
 print('Settings: From Date- {}, To Date- {}'.format(from_date, to_date))
 
 #--------------------------------------------------------------------------------------------------------------
