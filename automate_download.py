@@ -259,7 +259,7 @@ rename_the_fields(results)
 if int(arcpy.GetCount_management(results).getOutput(0)) == 0:
     print('No records for given date range. Exiting script')
     sys.exit()
-
+print('Total number of imported redords: ' + int(arcpy.GetCount_management(results).getOutput(0)))
 print('Splitting records into NGD_UIDs and Null NGD_UIDs')
 w_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_NGD_UID', 'NGD_UID IS NOT NULL')
 no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_no_NGD_UID', 'NGD_UID IS NULL')
