@@ -256,16 +256,16 @@ print('Running script')
 results = auto_download_data(url, o_gdb, o_name, from_date, to_date)
 rename_the_fields(results)
 
+if int(arcpy.GetCount_management(results).getOutput(0)) == 0:
+    print('No records for given date range. Exiting script')
+    sys.exit()
+
 print('Splitting records into NGD_UIDs and Null NGD_UIDs')
 w_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_NGD_UID', 'NGD_UID IS NOT NULL')
 no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_no_NGD_UID', 'NGD_UID IS NULL')
 
 print('Records with NGD_UIDs: {}  Records with NULL NGD_UIDs: {}'.format(arcpy.GetCount_management(w_NGD_UIDs), 
                                                                         arcpy.GetCount_management(no_NGD_UIDs)))
-if arcpy.GetCount_management(w_NGD_UIDs) == 0 and arcpy.GetCount_management(no_NGD_UIDs) == 0:
-    print('Date time range returned no records. Check range and try again.')
-    print('Exiting script')
-    sys.exit()
 
 print('Filtering to remove records that contain duplicate NGD_UIDs')
 filtered = filter_data_remove_duplicates(w_NGD_UIDs, o_gdb, o_name)
