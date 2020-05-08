@@ -114,8 +114,8 @@ def filter_data_remove_duplicates(Redline_data, outGDB, outName):
     # Read rows into a pandas dataframe
     df = pd.DataFrame.spatial.from_featureclass(Redline_data, sr= '3347')
     if len(df) == 0:
-        print('Length of rows is 0 exiting script')
-        sys.exit()
+        print('Length of rows is 0 continuing')
+        return None
     KeepRows = []
     for uid in unique_values(Redline_data, 'NGD_UID'):
         uid_rows = df.loc[df['NGD_UID'] == uid ]
@@ -129,6 +129,9 @@ def filter_data_remove_duplicates(Redline_data, outGDB, outName):
     return os.path.join(outGDB, outName + '_uniques')
 
 def address_field_check(redline_data, out_gdb, out_base_name, w_NGD_UID= True):
+    if arcpy.GetCount_management(redline_data) == 0:
+        print('Redline data has no records returning None')
+        return [None, None]
     print('Running address field changes check')
     # check redline fields against the NGD_AL fields. If fields change from valid to invalid flag those rows
     uid_field = 'NGD_UID'
@@ -257,7 +260,14 @@ print('Splitting records into NGD_UIDs and Null NGD_UIDs')
 w_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_NGD_UID', 'NGD_UID IS NOT NULL')
 no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_no_NGD_UID', 'NGD_UID IS NULL')
 
-print('Filtering to remove duplicate records (only running on records that contain NGD_UIDs)')
+print('Records with NGD_UIDs: {}  Records with NULL NGD_UIDs: {}'.format(arcpy.GetCount_management(w_NGD_UIDs), 
+                                                                        arcpy.GetCount_management(no_NGD_UIDs)))
+if arcpy.GetCount_management(w_NGD_UIDs) == 0 and arcpy.GetCount_management(no_NGD_UIDs) == 0:
+    print('Date time range returned no records. Check range and try again.')
+    print('Exiting script')
+    sys.exit()
+
+print('Filtering to remove records that contain duplicate NGD_UIDs')
 filtered = filter_data_remove_duplicates(w_NGD_UIDs, o_gdb, o_name)
 
 print('Running address fields QC checks')
