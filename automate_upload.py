@@ -13,11 +13,36 @@ arcpy.env.overwriteOutput = True
 load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 changesGDB = os.getenv('GEOM_CHANGES_DATA')
 changes_layer = os.getenv('GEOM_LAYER')
+
+CSD_data = os.path.join(os.getcwd(), 'ngd_national.gdb', 'WC2021CSD_202003')
+
 print('GDB source: ' + changesGDB + ' changes fc: ' + changes_layer)
 fl_title= changes_layer + '_' + str(date.today())
 #---------------------------------------------------------------------------
-#Logic
+# Remove NULL CSD_UIDs from output 
+query = 'CSD_UID_R IS NULL OR CSD_UID_R IS NULL'
+# no_csd_uid = arcpy.FeatureClassToFeatureClass_conversion(os.path.join(changesGDB, changes_layer), changesGDB, 'no_csd_uids',
+#                                                         where_clause= query)
+no_csd_uid = arcpy.MakeFeatureLayer_management(os.path.join(changesGDB, changes_layer), 'fl', where_clause= query)
+for d in ['l', 'r']:
+    direction = 'LEFT'
+    print('Looking for CSD_UIDs on ' + direction.lower() + ' side')
+    if d == 'r':
+        direction = 'RIGHT'
+    buffer = arcpy.Buffer_analysis(no_csd_uid, os.path.join(changesGDB, 'buffer_' + d), '5 METERS', direction)
+    print('Making Spatial Join')
+    sj = arcpy.SpatialJoin_analysis(buffer, CSD_data, os.path.join(changesGDB, d + '_sj'), join_operation= 'JOIN_ONE_TO_ONE', 
+                                join_type= 'KEEP_ALL')
+    joined = arcpy.AddJoin_management(no_csd_uid, 'OBJECTID', sj, 'TARGET_FID')
+    print('Calculating CSD_UIDS')
+    arcpy.CalculateField_management(joined, 'redline_geom.CSD_UID_' + d.upper(), '!{}.CSD_UID!'.format(d + '_sj'), 'PYTHON3')
+    arcpy.RemoveJoin_management(no_csd_uid, d + '_sj')
 
+
+#---------------------------------------------------------------------------
+# Upload Logic
+
+# Use pro login info as before 
 gis = GIS('pro')
 print('Logged in as: ' + str(gis.properties.user.username))
 # delete old versions if they exist
