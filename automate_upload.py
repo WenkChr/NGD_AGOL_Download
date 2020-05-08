@@ -38,5 +38,5 @@ geom_flc = FeatureLayerCollection.fromitem(geom_fl)
 geom_flc.manager.update_definition({'capabilities':'Query,Extract'})
 
 print('Sharing Layer with NGD')
-#geom_fl.share( groups= gis.groups.search('title:NGD')[0].groupid)
+geom_fl.share( groups= gis.groups.search('title:NGD')[0].groupid)
 print('Upload Complete')
