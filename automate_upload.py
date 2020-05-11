@@ -17,7 +17,8 @@ changes_layer = os.getenv('GEOM_LAYER')
 CSD_data = os.path.join(os.getcwd(), 'ngd_national.gdb', 'WC2021CSD_202003')
 
 print('GDB source: ' + changesGDB + ' changes fc: ' + changes_layer)
-fl_title= changes_layer + '_' + str(date.today())
+fl_title= changes_layer + '_' + str(os.getenv('TO_DATE_TIME').split(' ')[0])
+
 #---------------------------------------------------------------------------
 # Remove NULL CSD_UIDs from output 
 query = 'CSD_UID_R IS NULL OR CSD_UID_R IS NULL'
