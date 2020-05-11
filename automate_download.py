@@ -236,7 +236,7 @@ def fix_null_src_vals(bad_redline_rows, o_gdb, o_name):
 load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 
 directory = os.getcwd() # Will return the directory that this file is currently in.
-url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/test_NGD_STREET_Redline/FeatureServer/0' # URL for AGOL NGD_Redline data
+url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline/FeatureServer/0' # URL for AGOL NGD_Redline data
 gdb_name = 'NGD_Redline.gdb'
 o_gdb = os.path.join(directory, gdb_name)
 o_name = 'NGD_STREET_Redline' # Name for final output file
@@ -259,7 +259,7 @@ rename_the_fields(results)
 if int(arcpy.GetCount_management(results).getOutput(0)) == 0:
     print('No records for given date range. Exiting script')
     sys.exit()
-print('Total number of imported redords: ' + int(arcpy.GetCount_management(results).getOutput(0)))
+print('Total number of imported redords: ' + str(int(arcpy.GetCount_management(results).getOutput(0))))
 print('Splitting records into NGD_UIDs and Null NGD_UIDs')
 w_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_NGD_UID', 'NGD_UID IS NOT NULL')
 no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_no_NGD_UID', 'NGD_UID IS NULL')
