@@ -288,7 +288,8 @@ print("Looking for changes to address range attributes...")
 # process the fields that set the ATTRBT_DTE field when they change
 target_date_field = 'ATTRBT_DTE'
 print(f"Processing fields that set {target_date_field}.")
-fields = ['SGMNT_SRC', 'STR_CLS_CDE', 'STR_RNK_CDE', 'ADDR_TYP_L', 'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R']
+# 'STR_CLS_CDE', 'STR_RNK_CDE' - fields ignored due to AGOL editor data replication issues
+fields = ['SGMNT_SRC', 'ADDR_TYP_L', 'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R']
 for index, row in attr_change.iterrows():
     uid = row[ngd_uid_field]
     for fieldname in fields:
@@ -369,12 +370,8 @@ fields = ['OBJECTID', 'GlobalID', 'Shape__Length', 'CreationDate',	'Creator', 'E
         'STR_NME_ALIAS2', 'STR_TYP_ALIAS2', 'STR_DIR_ALIAS2', 'NME_SRC_ALIAS2', 'STR_RH_DIFF_FLG', 'Comments',
         'SHAPE','ALIAS1_STR_UID_L',	'ALIAS1_STR_UID_R',	'ALIAS2_STR_UID_L',	'ALIAS2_STR_UID_R',	'geom',	'geom_threshold']
 
-#Removed for causing errors: 'NGD_STR_UID_DTE_L', 'NGD_STR_UID_DTE_R'
+#Removed for causing errors: 'NGD_STR_UID_DTE_L', 'NGD_STR_UID_DTE_R' 
 
 geom_change[fields].spatial.to_featureclass(os.path.join(Path(os.getenv('NGD_NEW_GEOM_PATH'), 'redline_geom')))
-# geom_change.spatial.to_featurelayer(
-#                                     title= 'redline_geom_2020-05-05_detect_changes', 
-#                                     gis= GIS('pro'), 
-#                                     tags= 'NGD_AL, Redline')
-geom_change.to_csv()                                    
+                                   
 print('DONE!')
