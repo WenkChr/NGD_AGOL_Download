@@ -60,8 +60,13 @@ geom_fl = geom_changes.spatial.to_featurelayer(
 # Make into a feature layer collection to change properties
 geom_flc = FeatureLayerCollection.fromitem(geom_fl)
 #Change settings to allow extracts from other users
-geom_flc.manager.update_definition({'capabilities':'Query,Extract'})
-
+desc = f''''Geometry changes from NGD_Redline extracted on {str(date.today())}.
+Date Range: From - {os.getenv('FROM_DATE_TIME')} To - {os.getenv('TO_DATE_TIME')} 
+'''
+geom_flc.manager.update_definition({'description' : desc,
+                                    'capabilities' : 'Query,Extract'
+                                    })
+#print(geom_flc.properties)
 print('Sharing Layer with NGD')
 geom_fl.share( groups= gis.groups.search('title:NGD')[0].groupid)
 print('Upload Complete')
