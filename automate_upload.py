@@ -22,8 +22,6 @@ fl_title= changes_layer + '_' + str(os.getenv('TO_DATE_TIME').split(' ')[0])
 #---------------------------------------------------------------------------
 # Remove NULL CSD_UIDs from output 
 query = 'CSD_UID_R IS NULL OR CSD_UID_R IS NULL'
-# no_csd_uid = arcpy.FeatureClassToFeatureClass_conversion(os.path.join(changesGDB, changes_layer), changesGDB, 'no_csd_uids',
-#                                                         where_clause= query)
 no_csd_uid = arcpy.MakeFeatureLayer_management(os.path.join(changesGDB, changes_layer), 'fl', where_clause= query)
 for d in ['l', 'r']:
     direction = 'LEFT'
