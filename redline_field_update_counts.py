@@ -7,12 +7,17 @@
 # Created:     12/05/2020
 #-------------------------------------------------------------------------------
 
-import csv
+import csv, os
 from collections import OrderedDict
+from dotenv import load_dotenv
 
-sql_file = r"C:\StatCan\ngdEditor\redline_sql_counts\redline_attr_change20200405-20200508.sql"
+# Setup env
+load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 
-csv_count_output = r"C:\StatCan\ngdEditor\redline_sql_counts\redline_count_20200405-20200508.csv"
+sql_file = os.getenv('NGD_ATTR_SQL_PATH')
+
+csv_name = os.getenv('FROM_DATE_TIME').split(' ')[0].replace('-', '_') + '_' + os.getenv('TO_DATE_TIME').split(' ')[0].replace('-', '_')
+csv_count_output = os.path.join(os.getenv('NGD_DATA_DIR'), 'redline_count_' + csv_name + '.csv')
 
 field_list = ["AFL_VAL",
 "ATL_VAL",
@@ -68,7 +73,7 @@ def sqlVariableCounts(sql_file, csv_count_output, field_list):
                 else:
                     ngd_dict[ngd_uid] += 1
 
-            for f in field_dict.iterkeys():
+            for f in field_dict.keys():
                 if f in line:
                     field_dict[f] += 1
 
@@ -76,14 +81,13 @@ def sqlVariableCounts(sql_file, csv_count_output, field_list):
     field_dict["NGD_UID"] = len(ngd_dict)
 
     #create csv from dictionaries
-    with open(csv_count_output, 'wb') as cf:
+    with open(csv_count_output, 'w') as cf:
         output_fields = ["VARIABLE" ,"COUNT"]
         writer = csv.DictWriter(cf, fieldnames=output_fields)
         writer.writeheader()
-        for f, c in field_dict.iteritems():
+        for f, c in field_dict.items():
             writer.writerow({"VARIABLE": f, "COUNT": c})
 
-    print "{} created!".format(csv_count_output)
-
+    print("{} created!".format(csv_count_output))
 
 sqlVariableCounts(sql_file=sql_file, csv_count_output=csv_count_output, field_list=field_list)
