@@ -27,34 +27,40 @@ def table_to_data_frame(in_table, input_fields=None, where_clause=None):
 #-------------------------------------------------------------------------------------------------------------------------------------
 #Constants
 
-#NGD_AL_fc = r'H:\NGD_AGOL_Download\Final_Export_2020-05-29_2.gdb\WC2021NGD_AL_20200313_'
 NGD_STREET_tbl = r'H:\NGD_AGOL_Download\NGD_Redline.gdb\NGD_STREET'
 NGD_AL_fc = r'H:\NGD_AGOL_Download\Final_Export_2020-05-29_2.gdb\WC2021NGD_AL_20200313_'
+outPath = r'H:\NGD_AGOL_Download'
+AL_csv = os.path.join(outPath, 'NGD_AL.csv')
+joinedCSV_Name = 'jointest.csv'
+chunkSize = 100000
 #-------------------------------------------------------------------------------------------------------------------------------------
 #Logic
-print('Loading in NGD_AL')
-AL_df = pd.DataFrame.spatial.from_featureclass(NGD_AL_fc, fields= ['NGD_UID', 'NGD_STR_UID_L', 
-                                                                'ALIAS1_STR_UID_L', 
-                                                                'ALIAS2_STR_UID_L'])
+print('Converting NGD_AL data into a csv')
+#AL_csv = arcpy.TableToTable_conversion(NGD_AL_fc, r'H:\NGD_AGOL_Download', 'NGD_AL.csv')
+count = 0
+NGD_STREET_df = table_to_data_frame(NGD_STREET_tbl, ['NGD_STR_UID', 'STR_NME', 'STR_TYP', 'STR_DIR', 'NAME_SRC'])
+for chunk in pd.read_csv(AL_csv, chunksize= chunkSize):
+    print(f'Running for section {count} to {count + chunkSize}')
+    count += chunkSize
+    AL_df = chunk
+    print('Doing initial merge of NGD_AL and NGD_STREET')
+    AL_df = AL_df.merge(NGD_STREET_df, how='outer', left_on='NGD_STR_UID_L', right_on= 'NGD_STR_UID')
+    print('Running alias join loop')
+    for alias in ['ALIAS1', 'ALIAS2']:
+        print(f'Aliasing {alias} fields')
+        print('Loading in NGD_STREET')
+        aliasStreet = NGD_STREET_df.copy()
+        aliasStreet.rename(columns= {'NGD_STR_UID' : f'{alias}_NGD_STR_UID',
+                                    'STR_NME' : f'{alias}_STR_NME', 
+                                    'STR_TYP' : f'{alias}_STR_TYP',
+                                    'STR_DIR' : f'{alias}_STR_DIR',
+                                    'NAME_SRC' : f'{alias}_NME_SRC'},
+                                    inplace= True) # Rename NGD_STREET fields to match the alias that they are replacing
+        print(f'Merging NGD_STREET to NGD_AL for {alias}')
+        AL_df = AL_df.merge(aliasStreet, how= 'outer', left_on= f'{alias}_STR_UID_L', right_on= f'{alias}_NGD_STR_UID')
+        AL_df.drop(columns= f'{alias}_NGD_STR_UID')
+    print('Exporting joins to output csv')
+    AL_df.to_csv(os.path.join(outPath, joinedCSV_Name), mode= 'a', header= True)
 
-print('Merging NGD_AL and NGD_STREET')
-for alias in ['ALIAS1', 'ALIAS2']:
-    print(f'Aliasing {alias} fields')
-    print('Loading in NGD_STREET')
-    aliasStreet = table_to_data_frame(NGD_STREET_tbl, ['NGD_STR_UID', 'STR_NME', 'STR_TYP', 'STR_DIR', 'NAME_SRC'])
-    aliasStreet.rename(columns= {'NGD_STR_UID' : f'{alias}_NGD_STR_UID',
-                                'STR_NME' : f'{alias}_STR_NME', 
-                                'STR_TYP' : f'{alias}_STR_TYP',
-                                'STR_DIR' : f'{alias}_STR_DIR',
-                                'NAME_SRC' : f'{alias}_NME_SRC'},
-                                inplace= True) # Rename NGD_STREET fields to match the alias that they are replacing
-    print(f'Merging NGD_STREET to NGD_AL for {alias}')
-    AL_df = AL_df.merge(aliasStreet, how= 'outer', left_on= f'{alias}_STR_UID_L', right_on= f'{alias}_NGD_STR_UID')
-    AL_df.drop(columns= f'{alias}_NGD_STR_UID')
-print('Performing full NGD_STREET join with NGD_AL')
-NGD_STREET_df = table_to_data_frame(NGD_STREET_tbl)
-AL_df = AL_df.merge(NGD_STREET_df, how='outer', left_on='NGD_STR_UID_L', right_on= 'NGD_STR_UID')
-del NGD_STREET_df
-print('Exporting joins to featureclass')
-AL_df.to_featureclass(os.path.join('H:\NGD_AGOL_Download\NGD_Redline.gdb', 'joinPandasTest'), overwrite= True)
+    
 print('DONE!')
