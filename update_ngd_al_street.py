@@ -2,6 +2,8 @@ import os, sys, arcpy, time
 import pandas as pd
 from arcgis import GeoAccessor
 
+arcpy.env.overwriteOutput = True
+
 ''' Workflow Overview
 1.) Bring in NGD_AL and NGD_STREET data
 2.) Create join between NGD_AL and NGD_STREET on NGD_STR_UID_L
@@ -37,7 +39,7 @@ chunkSize = 100000
 #Logic
 t0 = time.time()
 print('Converting NGD_AL data into a csv')
-#AL_csv = arcpy.TableToTable_conversion(NGD_AL_fc, r'H:\NGD_AGOL_Download', 'NGD_AL.csv')
+AL_csv = arcpy.TableToTable_conversion(NGD_AL_fc, r'H:\NGD_AGOL_Download', 'NGD_AL.csv')
 count = 0
 NGD_STREET_df = table_to_data_frame(NGD_STREET_tbl, ['NGD_STR_UID', 'STR_NME', 'STR_TYP', 'STR_DIR', 'NAME_SRC'])
 for chunk in pd.read_csv(AL_csv, chunksize= chunkSize, usecols=['NGD_STR_UID_L', 'ALIAS1_STR_UID_L', 'ALIAS2_STR_UID_L']):
