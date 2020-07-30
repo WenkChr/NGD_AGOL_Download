@@ -1,4 +1,4 @@
-import os, sys, arcpy
+import os, sys, arcpy, time
 import pandas as pd
 from arcgis import GeoAccessor
 
@@ -35,11 +35,12 @@ joinedCSV_Name = 'jointest.csv'
 chunkSize = 100000
 #-------------------------------------------------------------------------------------------------------------------------------------
 #Logic
+t0 = time.time()
 print('Converting NGD_AL data into a csv')
 #AL_csv = arcpy.TableToTable_conversion(NGD_AL_fc, r'H:\NGD_AGOL_Download', 'NGD_AL.csv')
 count = 0
 NGD_STREET_df = table_to_data_frame(NGD_STREET_tbl, ['NGD_STR_UID', 'STR_NME', 'STR_TYP', 'STR_DIR', 'NAME_SRC'])
-for chunk in pd.read_csv(AL_csv, chunksize= chunkSize):
+for chunk in pd.read_csv(AL_csv, chunksize= chunkSize, usecols=['NGD_STR_UID_L', 'ALIAS1_STR_UID_L', 'ALIAS2_STR_UID_L']):
     print(f'Running for section {count} to {count + chunkSize}')
     count += chunkSize
     AL_df = chunk
@@ -58,9 +59,13 @@ for chunk in pd.read_csv(AL_csv, chunksize= chunkSize):
                                     inplace= True) # Rename NGD_STREET fields to match the alias that they are replacing
         print(f'Merging NGD_STREET to NGD_AL for {alias}')
         AL_df = AL_df.merge(aliasStreet, how= 'outer', left_on= f'{alias}_STR_UID_L', right_on= f'{alias}_NGD_STR_UID')
-        AL_df.drop(columns= f'{alias}_NGD_STR_UID')
+        AL_df.drop(columns= f'{alias}_NGD_STR_UID', inplace= True)
     print('Exporting joins to output csv')
     AL_df.to_csv(os.path.join(outPath, joinedCSV_Name), mode= 'a', header= True)
 
-    
+print('Joining the joined csv to the NGD_AL FC')    
+
+
+t1 = time.time()
+print(f'Script run time: {round((t1-t0)/60, 2)} min')
 print('DONE!')
