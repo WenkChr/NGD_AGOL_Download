@@ -259,7 +259,7 @@ rename_the_fields(results)
 if int(arcpy.GetCount_management(results).getOutput(0)) == 0:
     print('No records for given date range. Exiting script')
     sys.exit()
-print('Total number of imported redords: ' + str(int(arcpy.GetCount_management(results).getOutput(0))))
+print('Total number of imported records: ' + str(int(arcpy.GetCount_management(results).getOutput(0))))
 print('Splitting records into NGD_UIDs and Null NGD_UIDs')
 w_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_NGD_UID', 'NGD_UID IS NOT NULL')
 no_NGD_UIDs = arcpy.FeatureClassToFeatureClass_conversion(results, o_gdb, o_name + '_w_no_NGD_UID', 'NGD_UID IS NULL')
@@ -299,9 +299,9 @@ for fc in arcpy.ListFeatureClasses():
         arcpy.Delete_management(fc) 
 
 print('Filtering NGD_AL data')
-arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'ngd_national.gdb', 'WC2021NGD_AL_20200313'),
+arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'Final_Export_2020-07-31_2.gdb', 'NGD_AL'),
                                             os.path.join(directory, o_gdb), 
-                                            'WC2021NGD_AL_20200313',
+                                            'NGD_AL_filtered',
                                             'NGD_UID IN ' + str(tuple(uids)))  
 
 print('DONE!')
