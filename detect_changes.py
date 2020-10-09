@@ -290,8 +290,12 @@ target_date_field = 'ATTRBT_DTE'
 print(f"Processing fields that set {target_date_field}.")
 # 'STR_CLS_CDE', 'STR_RNK_CDE' - fields ignored due to AGOL editor data replication issues
 fields = ['SGMNT_SRC', 'ADDR_TYP_L', 'ADDR_TYP_R', 'ADDR_PRTY_L', 'ADDR_PRTY_R']
+donotexist = []
 for index, row in attr_change.iterrows():
     uid = row[ngd_uid_field]
+    if uid not in ngdal[ngd_uid_field].tolist():
+        donotexist.append(uid)
+        continue
     for fieldname in fields:
         red_val = sql_normalize_value(row[fieldname])
         ngd_val = ngdal[ngdal[ngd_uid_field] == uid].reset_index().at[0, fieldname]
@@ -311,16 +315,20 @@ for index, row in attr_change.iterrows():
             change_type['update'] += 1
         else:
             change_type['same'] += 1
-
+print(f'DO NOT EXIST: {donotexist}')
 print("Changes:", change_type)
 # process address values on the NGD_AL, which have a date field that matches their name
 print(f"Processing address fields.")
 fields = ['AFL_VAL', 'AFL_SFX', 'AFL_SRC', 'ATL_VAL', 'ATL_SFX', 'ATL_SRC', 
         'AFR_VAL', 'AFR_SFX', 'AFR_SRC', 'ATR_VAL', 'ATR_SFX', 'ATR_SRC']
+donotexist2 = []
 for index, row in attr_change.iterrows():
     uid = row[ngd_uid_field]
 
     for fieldname in fields:
+        if uid not in ngdal[ngd_uid_field].tolist():
+            donotexist2.append(uid)
+            continue
         red_val = sql_normalize_value(row[fieldname])
         ngd_val = ngdal[ngdal[ngd_uid_field] == uid].reset_index().at[0, fieldname]
         date_val = row[edit_date_field].strftime(sql_date_format)
@@ -344,7 +352,7 @@ for index, row in attr_change.iterrows():
             change_type['update'] += 1
         else:
             change_type['same'] += 1
-
+print(f'DO NOT EXIST2: {donotexist2}')
 print("Changes:", change_type)
 
 # write final results to output
