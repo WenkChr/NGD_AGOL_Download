@@ -14,7 +14,7 @@ load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 changesGDB = os.getenv('GEOM_CHANGES_DATA')
 changes_layer = os.getenv('GEOM_LAYER')
 
-CSD_data = os.path.join(os.getcwd(), 'ngd_national.gdb', 'WC2021CSD_202003')
+CSD_data = os.path.join(os.getcwd(), 'CSD_202009.gdb', 'WC2021CSD_202009')
 
 print('GDB source: ' + changesGDB + ' changes fc: ' + changes_layer)
 fl_title= changes_layer + '_' + str(os.getenv('TO_DATE_TIME').split(' ')[0])
