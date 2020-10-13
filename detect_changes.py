@@ -211,6 +211,8 @@ street_name_searchers = [
     'date_field': 'ATTRBT_DTE'}
     ]
 
+#pull date for adding as limter to the output SQL strings incase of EC editing. Skips stale records
+pull_date_val = os.getenv('TO_DATE_TIME').split(' ')[0]
 # iterate through the search criteria, looking for street updates
 for searcher in street_name_searchers:
     print("Processing redline based on", searcher['grouper'])
@@ -242,7 +244,7 @@ for searcher in street_name_searchers:
             change_type['update'] += 1
             date_val = group['EditDate'].tolist()[0].strftime(sql_date_format)
             uid = group[ngd_uid_field].tolist()[0]
-            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND {searcher['date_field']} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
             stmts.append(sql + END_SQL_STMT)
             
             # name changes also have a source attribute that needs to be updated
@@ -310,7 +312,7 @@ for index, row in attr_change.iterrows():
             if red_val == -1 or red_val == None:
                 red_val = "NULL"
             
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND {target_date_field} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
@@ -347,7 +349,7 @@ for index, row in attr_change.iterrows():
             if red_val == -1 or red_val == None:
                 red_val = "NULL"
 
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid}"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
