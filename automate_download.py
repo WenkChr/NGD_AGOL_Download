@@ -167,13 +167,23 @@ def address_field_check(redline_data, out_gdb, out_base_name, w_NGD_UID= True):
     outlist = [None, None]
     print('Good rows: ' + str(len(good_rows)) + ' Rows to QC: ' + str(len(fail_rows)))
     if len(good_rows) > 0:
-        arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_goodAddr',  
-                                                    where_clause= uid_field + ' IN ' + str(tuple(good_rows)))
-        outlist[0] = os.path.join(out_gdb, out_base_name + '_goodAddr')
+        if len(good_rows) == 1:
+            arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_goodAddr',  
+                                                        where_clause= uid_field + ' = ' + str(good_rows[0]))
+            outlist[0] = os.path.join(out_gdb, out_base_name + '_goodAddr')
+        if len(good_rows) > 1:
+            arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_goodAddr',  
+                                                        where_clause= uid_field + ' IN ' + str(tuple(good_rows)))
+            outlist[0] = os.path.join(out_gdb, out_base_name + '_goodAddr')
     if len(fail_rows)> 0:
-        arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_badAddr',  
-                                                    where_clause= uid_field + ' IN ' + str(tuple(fail_rows)))
-        outlist[1] = os.path.join(out_gdb, out_base_name + '_badAddr')
+        if len(fail_rows) == 1:
+            arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_badAddr',  
+                                                    where_clause= uid_field + ' = ' + str(fail_rows[0]))
+            outlist[1] = os.path.join(out_gdb, out_base_name + '_badAddr') 
+        if len(fail_rows) > 1:
+            arcpy.FeatureClassToFeatureClass_conversion(redline_data, out_gdb, out_base_name + '_badAddr',  
+                                                        where_clause= uid_field + ' IN ' + str(tuple(fail_rows)))
+            outlist[1] = os.path.join(out_gdb, out_base_name + '_badAddr')
     return outlist
 
 
@@ -236,7 +246,8 @@ def fix_null_src_vals(bad_redline_rows, o_gdb, o_name):
 load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 
 directory = os.getcwd() # Will return the directory that this file is currently in.
-url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_61/FeatureServer/0' # URL for AGOL NGD_Redline data
+#url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_61/FeatureServer/0' # URL for AGOL NGD_Redline data
+url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_6/FeatureServer/0' # URL for Test AGOL redline Layer
 gdb_name = 'NGD_Redline.gdb'
 o_gdb = os.path.join(directory, gdb_name)
 o_name = 'NGD_STREET_Redline' # Name for final output file
@@ -299,7 +310,7 @@ for fc in arcpy.ListFeatureClasses():
         arcpy.Delete_management(fc) 
 
 print('Filtering NGD_AL data')
-arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'Final_Export_2020-07-31_2.gdb', 'NGD_AL'),
+arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'Final_Export_2020-09-28_2.gdb', 'NGD_AL'),
                                             os.path.join(directory, o_gdb), 
                                             'NGD_AL_filtered',
                                             'NGD_UID IN ' + str(tuple(uids)))  
