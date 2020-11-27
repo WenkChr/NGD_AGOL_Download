@@ -255,13 +255,13 @@ for searcher in street_name_searchers:
                 # If the user left it blank, set to 'NGD'
                 if name_source_value == -1:
                     name_source_value = 'NGD'
-                sql = f"UPDATE {NGD_TBL_NAME} SET {name_source_field}='{name_source_value}' WHERE {ngd_uid_field}={uid}"
+                sql = f"UPDATE {NGD_TBL_NAME} SET {name_source_field}='{name_source_value}' WHERE {ngd_uid_field}={uid} AND {searcher['date_field']} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
                 stmts.append(sql + END_SQL_STMT)
         
              # reset EC name UID attributes to trigger a change on their side
             if searcher['ngdal_uid_field'].startswith('NGD_STR_UID'):
                 ec_field_name = searcher['ngdal_uid_field'].replace('NGD_STR_UID', 'EC_STR_ID')
-                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}=-1 WHERE {ngd_uid_field}={uid}"
+                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}=-1 WHERE {ngd_uid_field}={uid} {searcher['date_field']} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
                 stmts.append(sql + END_SQL_STMT)
 
         else:
