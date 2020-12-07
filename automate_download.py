@@ -1,8 +1,10 @@
-import os, sys, arcpy
+import os
+import sys
+
+import arcpy
 import pandas as pd
+from arcgis.features import FeatureLayer, GeoAccessor
 from arcgis.gis import GIS
-from arcgis.features import GeoAccessor
-from arcgis.features import FeatureLayer
 from dotenv import load_dotenv
 
 arcpy.env.overwriteOutput = True
@@ -246,8 +248,8 @@ def fix_null_src_vals(bad_redline_rows, o_gdb, o_name):
 load_dotenv(os.path.join(os.getcwd(), 'environments.env'))
 
 directory = os.getcwd() # Will return the directory that this file is currently in.
-#url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_61/FeatureServer/0' # URL for AGOL NGD_Redline data
-url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_6/FeatureServer/0' # URL for Test AGOL redline Layer
+url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_61/FeatureServer/0' # URL for AGOL NGD_Redline data
+#url = r'https://services7.arcgis.com/bRi0AN5rG57dCDE4/arcgis/rest/services/NGD_STREET_Redline_V2_6/FeatureServer/0' # URL for Test AGOL redline Layer
 gdb_name = 'NGD_Redline.gdb'
 o_gdb = os.path.join(directory, gdb_name)
 o_name = 'NGD_STREET_Redline' # Name for final output file
@@ -301,7 +303,17 @@ fix_address_field_errors(merged, o_gdb, o_name)
 fix_null_src_vals(merged, o_gdb, o_name)
 qc_PRTY_vals(merged, o_gdb, o_name)
 print('Merging all records and exporting to final feature class')
-arcpy.Merge_management(merged, os.path.join(o_gdb, o_name))
+arcpy.Merge_management(merged, os.path.join(o_gdb, o_name ))
+
+# #REMOVE ONT EDITS ONLY FOR FRI DEC 12 2020 PULL
+# fl = arcpy.MakeFeatureLayer_management(NGD_STREET_REDLINE)
+# wc = "PRCODE <> '35'"
+# csd_filtered = arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'CSD_202009.gdb', 'WC2021CSD_202009'), 
+#                                                             o_gdb, 
+#                                                             'CSD_FILTERED', 
+#                                                             where_clause= wc)
+# arcpy.SelectLayerByLocation_management(fl, 'INTERSECT', csd_filtered , invert_spatial_relationship= True)
+# arcpy.FeatureClassToFeatureClass_conversion(fl, o_gdb, o_name)
 
 print('Deleting non essential feature classes')
 arcpy.env.workspace = o_gdb
@@ -310,9 +322,18 @@ for fc in arcpy.ListFeatureClasses():
         arcpy.Delete_management(fc) 
 
 print('Filtering NGD_AL data')
-arcpy.FeatureClassToFeatureClass_conversion(os.path.join(directory, 'Final_Export_2020-09-28_2.gdb', 'NGD_AL'),
+NGD_AL_path = os.path.join(directory, 'Final_Export_2020-09-28_2.gdb', 'NGD_AL')
+arcpy.FeatureClassToFeatureClass_conversion(NGD_AL_path,
                                             os.path.join(directory, o_gdb), 
                                             'NGD_AL_filtered',
                                             'NGD_UID IN ' + str(tuple(uids)))  
+
+if not os.path.exists(os.getenv('NDG_EC_LINKS')):
+    print('Creating NGD_STR_UID and EC_STR_ID linkage table')
+    ngd_ec_str_id = pd.DataFrame.spatial.from_featureclass(NGD_AL_path, fields= ['NGD_STR_UID_L', 
+                                                                            'NGD_STR_UID_R', 
+                                                                            'EC_STR_ID_L',
+                                                                            'EC_STR_ID_R'])
+    ngd_ec_str_id.to_csv(os.getenv('NDG_EC_LINKS'))
 
 print('DONE!')
