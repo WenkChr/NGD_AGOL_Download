@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 import numpy as np
 import os, sys
+
 # Compare the redline NGD_AL data against the source data to detect changes
 #
 # Data processing is split into two paths - geometry changes or attribute changes. These paths represent whether data 
@@ -74,6 +75,10 @@ ngdstreet_path = Path(os.getenv('NGD_NGDSTREET_DATA'))
 print("Reading NGD_AL source data at", ngd_db_path, "from layer", ngdal_layer)
 ngdal = pd.DataFrame.spatial.from_featureclass(os.path.join(ngd_db_path.as_posix(), ngdal_layer), sr= '3347')
 print("Loaded", len(ngdal), "records.")
+
+print('Reading in ndg_ec_str_id linkage table')
+ngd_ec_linkage =pd.read_csv(os.getenv('NDG_EC_LINKS'))
+print('Loaded', len(ngd_ec_linkage), 'records.')
 
 # alias UID fields were not included in the original redline layer, so add them on
 print("Reading redline data at", redline_path, "from layer", redline_layer)
@@ -244,7 +249,7 @@ for searcher in street_name_searchers:
             change_type['update'] += 1
             date_val = group['EditDate'].tolist()[0].strftime(sql_date_format)
             uid = group[ngd_uid_field].tolist()[0]
-            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND {searcher['date_field']} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND ({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {searcher['date_field']} IS NULL)"
             stmts.append(sql + END_SQL_STMT)
             
             # name changes also have a source attribute that needs to be updated
@@ -255,13 +260,16 @@ for searcher in street_name_searchers:
                 # If the user left it blank, set to 'NGD'
                 if name_source_value == -1:
                     name_source_value = 'NGD'
-                sql = f"UPDATE {NGD_TBL_NAME} SET {name_source_field}='{name_source_value}' WHERE {ngd_uid_field}={uid} AND {searcher['date_field']} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
+                sql = f"UPDATE {NGD_TBL_NAME} SET {name_source_field}='{name_source_value}' WHERE {ngd_uid_field}={uid} AND ({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {searcher['date_field']} IS NULL)"
                 stmts.append(sql + END_SQL_STMT)
         
              # reset EC name UID attributes to trigger a change on their side
             if searcher['ngdal_uid_field'].startswith('NGD_STR_UID'):
                 ec_field_name = searcher['ngdal_uid_field'].replace('NGD_STR_UID', 'EC_STR_ID')
-                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}=-1 WHERE {ngd_uid_field}={uid} {searcher['date_field']} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
+                src_side = searcher['grouper'][0][-2:]
+                # Go find the EC_STREET_ID and add it to the statement
+                ec_str_id = int(ngd_ec_linkage.loc[ngd_ec_linkage[f'NGD_STR_UID{src_side}'] == int(street_uid)][f'EC_STR_ID{src_side}'].values[0])
+                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}={ec_str_id} WHERE {ngd_uid_field}={uid} AND ({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {searcher['date_field']} IS NULL OR )"
                 stmts.append(sql + END_SQL_STMT)
 
         else:
@@ -311,8 +319,8 @@ for index, row in attr_change.iterrows():
             # -1 values are due to the fillna operation, so set those to NULL
             if red_val == -1 or red_val == None:
                 red_val = "NULL"
-            
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND {target_date_field} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
+            date_statement = f"{target_date_field} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {target_date_field} IS NULL OR {target_date_field} > (SELECT sysdate - 30/24/60 from dual)"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND ({date_statement})"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
@@ -348,8 +356,9 @@ for index, row in attr_change.iterrows():
             # -1 values are due to the fillna operation, so set those to NULL
             if red_val == -1 or red_val == None:
                 red_val = "NULL"
-
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} < to_date('{pull_date_val}', 'YYYY-MM-DD')"
+            
+            date_statement = f"{target_date_field} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {target_date_field} IS NULL OR {target_date_field} > (SELECT sysdate - 30/24/60 from dual)"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND ({date_statement})"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
