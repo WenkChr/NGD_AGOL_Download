@@ -269,7 +269,7 @@ for searcher in street_name_searchers:
                 src_side = searcher['grouper'][0][-2:]
                 # Go find the EC_STREET_ID and add it to the statement
                 ec_str_id = int(ngd_ec_linkage.loc[ngd_ec_linkage[f'NGD_STR_UID{src_side}'] == int(street_uid)][f'EC_STR_ID{src_side}'].values[0])
-                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}={ec_str_id} WHERE {ngd_uid_field}={uid} AND ({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {searcher['date_field']} IS NULL OR )"
+                sql = f"UPDATE {NGD_TBL_NAME} SET {ec_field_name}={ec_str_id} WHERE {ngd_uid_field}={uid} AND ({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD') OR {searcher['date_field']} IS NULL)"
                 stmts.append(sql + END_SQL_STMT)
 
         else:
