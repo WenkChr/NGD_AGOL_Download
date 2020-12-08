@@ -131,3 +131,10 @@ dmypy.json
 ngd_national.gdb/
 NGD_Redline.gdb/
 ngd_street.csv
+Update NGD_AL on AGOL.docx
+*.csv
+CSD_202009.gdb/
+Final_Export_2020-09-28_1.gdb/
+Final_Export_2020-09-28_2.gdb/
+NGD_archive/
+NGD_STREET_JOINS_09_28.gdb/
