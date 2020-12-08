@@ -249,7 +249,7 @@ for searcher in street_name_searchers:
             change_type['update'] += 1
             date_val = group['EditDate'].tolist()[0].strftime(sql_date_format)
             uid = group[ngd_uid_field].tolist()[0]
-            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND (({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD')) OR ({searcher['date_field']} IS NULL) OR ({searcher['date_field']} > (SELECT sysdate - 30/24/60 from dual)))"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {searcher['ngdal_uid_field']}={street_uid}, {searcher['date_field']}=(SELECT sysdate from dual) WHERE {ngd_uid_field}={uid} AND (({searcher['date_field']} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD')) OR ({searcher['date_field']} IS NULL) OR ({searcher['date_field']} > (SELECT sysdate - 30/24/60 from dual)))"
             stmts.append(sql + END_SQL_STMT)
             
             # name changes also have a source attribute that needs to be updated
@@ -320,7 +320,7 @@ for index, row in attr_change.iterrows():
             if red_val == -1 or red_val == None:
                 red_val = "NULL"
             date_statement = f"({target_date_field} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD')) OR ({target_date_field} IS NULL) OR ({target_date_field} > (SELECT sysdate - 30/24/60 from dual))"
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND ({date_statement})"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=(SELECT sysdate from dual) WHERE {ngd_uid_field}={uid} AND ({date_statement})"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
@@ -358,7 +358,7 @@ for index, row in attr_change.iterrows():
                 red_val = "NULL"
             
             date_statement = f"({target_date_field} < to_date('{os.getenv('NGD_DATA_VINTAGE_DATE')}', 'YYYY-MM-DD')) OR ({target_date_field} IS NULL) OR ({target_date_field} > (SELECT sysdate - 30/24/60 from dual))"
-            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=to_date('{date_val}', 'YYYY-MM-DD') WHERE {ngd_uid_field}={uid} AND ({date_statement})"
+            sql = f"UPDATE {NGD_TBL_NAME} SET {fieldname}={red_val}, {target_date_field}=(SELECT sysdate from dual) WHERE {ngd_uid_field}={uid} AND ({date_statement})"
             stmts.append(sql + END_SQL_STMT)
             change_type['update'] += 1
         else:
